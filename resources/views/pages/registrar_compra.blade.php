@@ -14,7 +14,7 @@
             <li class="breadcrumb-item active" aria-current="page">Registrar compra</li>
         </ol>
     </nav>
-    <h1 class="text-center">Registrar Compra</h1>
+    <h2 class="text-center">Registrar Compra</h2>
     @if (session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert" id='cajaOkey'>
             {{ session('success') }}
@@ -119,13 +119,19 @@
                 </table>
             </div>
         </div>
-
-        <!-- Opciones de Factura -->
-        <div class="form-check mb-4">
-            <input type="checkbox" class="form-check-input" id="compraConFactura">
-            <label class="form-check-label" for="compraConFactura">¿Compra con factura?</label>
+        <div class="row mb-4 align-items-center">
+            <!-- Porcentaje de Descuento -->
+            <div class="col-auto d-flex align-items-center">
+                <label for="porcentajeDescuento" class="form-label mb-0 me-2">Porcentaje de Descuento:</label>
+                <input type="number" id="porcentajeDescuento" class="form-control" placeholder="1-100" min="1"
+                    max="100" style="max-width: 100px;">
+            </div>
+            <!-- Opciones de Factura -->
+            <div class="col-auto d-flex align-items-center ms-3">
+                <input type="checkbox" class="form-check-input me-2" id="compraConFactura">
+                <label class="form-check-label mb-0" for="compraConFactura">¿Compra con factura?</label>
+            </div>
         </div>
-
         <!-- Resumen de Compra -->
         <div class="d-flex justify-content-between">
             <h5>Total de la Compra: <span id="totalCompra">Bs 0.00</span></h5>
@@ -261,7 +267,7 @@
                 const proveedor = proveedores.find(p => p.id_proveedor == idProveedor);
 
                 if (proveedorSeleccionado) {
-                    alert('Solo se puede seleccionar un proveedor.');
+                    showNotification('Solo se puede seleccionar un proveedor.', 'danger');
                     return;
                 }
 
@@ -321,7 +327,6 @@
 
             } else {
                 tabla.classList.add('d-none');
-                //alert('No se encontraron productos.');
                 showNotification('No se encontraron productos.', 'danger');
             }
         });
@@ -329,7 +334,7 @@
         function añadirProducto(producto) {
             const existe = productosSeleccionados.some(p => p.id_producto === producto.id_producto);
             if (existe) {
-                alert('El producto ya está añadido.');
+                showNotification('El producto ya está añadido.', 'danger');
                 return;
             }
 
@@ -398,13 +403,29 @@
             }, 5000);
         }
 
+        function actualizarTotal() {
+            let total = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
+
+            const porcentajeDescuento = parseInt(document.getElementById('porcentajeDescuento').value) || 0;
+
+            if (porcentajeDescuento > 0 && porcentajeDescuento <= 100) {
+                total -= (total * porcentajeDescuento) / 100;
+            }
+
+            document.getElementById('totalCompra').innerText = `Bs ${total.toFixed(2)}`;
+        }
+
+        // Escuchar cambios en el porcentaje de descuento
+        document.getElementById('porcentajeDescuento').addEventListener('input', actualizarTotal);
+
+
         document.getElementById('finalizarCompra').addEventListener('click', function() {
             const modal = new bootstrap.Modal(document.getElementById('confirmarCompraModal'));
             modal.show();
         });
 
         document.getElementById('confirmarCompra').addEventListener('click', function() {
-            alert('Compra registrada con éxito.');
+            showNotification('Compra registrada con éxito.', 'success');
             location.reload();
         });
     </script>

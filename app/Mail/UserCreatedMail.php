@@ -30,8 +30,8 @@ class UserCreatedMail extends Mailable
      */
     public function build()
     {
-        return $this->from('reservafacil@gmail.com', 'Reserva Facil')
-            ->subject('Bienvenido a Reserva Facil')
+        return $this->from('reservafacil@gmail.com', 'Farmacia ALVA')
+            ->subject('Bienvenido a Farmacia ALVA')
             ->view('emails.email_template')
             ->with([
                 'user' => $this->user,

@@ -19,7 +19,7 @@ class ChangePwdMail extends Mailable
 
     public function build()
     {
-        return $this->from('reservafacil@gmail.com', 'Reserva Facil')
+        return $this->from('reservafacil@gmail.com', 'Farmacia ALVA')
             ->subject('Cambio de contraseña')
             ->view('emails.email_change_password')
             ->with([

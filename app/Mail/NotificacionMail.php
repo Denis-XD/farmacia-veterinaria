@@ -32,7 +32,7 @@ class NotificacionMail extends Mailable
      */
     public function build()
     {
-        return $this->from('reservafacil@gmail.com', 'Reserva Facil')
+        return $this->from('reservafacil@gmail.com', 'Farmacia ALVA')
             ->subject($this->subject)
             ->view('emails.email_notificacion')
             ->with(['content' => $this->content]);
