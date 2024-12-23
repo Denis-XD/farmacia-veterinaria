@@ -1,0 +1,200 @@
+.container__login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: color-mix(in srgb, var(--bs-primary), transparent 30%)
+}
+
+.card__login {
+    width: 60%;
+    height: 75%;
+    background-color: var(--bs-white);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.5);
+    display: flex;
+}
+
+.card__login-rightbottom {
+    width: 50%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    gap: 1rem;
+    background-color: var(--bs-white);
+    color: var(--bs-primary);
+
+    h1 {
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        text-align: center;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        text-align: center;
+    }
+}
+
+.form__password {
+    background-image: url("/assets/password_no_focus.svg");
+}
+
+.form__password:focus {
+    background-image: url("/assets/password_focus.svg");
+}
+
+.form__email {
+    background-image: url("/assets/email_no_focus.svg");
+}
+
+.form__email:focus {
+    background-image: url("/assets/email_focus.svg");
+}
+
+.form__email,
+.form__password {
+    padding-left: 30px;
+    background-repeat: no-repeat;
+    background-position: 8px center;
+    background-size: 16px;
+}
+
+
+.card__login-lefttop {
+    width: 50%;
+    height: 100%;
+    position: relative;
+
+    .card__login--background {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+    }
+
+    .card__login--gradiente {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: color-mix(in srgb, var(--bs-primary), transparent 50%);
+        z-index: 2;
+    }
+}
+
+.login__info {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: var(--bs-white);
+    position: relative;
+    z-index: 3;
+
+    h1 {
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    p {
+        font-size: 1rem;
+        text-align: center;
+
+        svg {
+            width: 1.2rem;
+            height: 1.2rem;
+            fill: var(--bs-white);
+            animation: from-left-to-right 1s infinite alternate;
+        }
+    }
+
+    img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+    }
+}
+
+@keyframes from-left-to-right {
+    0% {
+        transform: translateX(1rem);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .card__login {
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        position: relative;
+    }
+
+    .card__login-lefttop {
+        position: absolute;
+        width: 100%;
+        height: 45%;
+        top: 0;
+        z-index: 2;
+    }
+
+    .card__login-rightbottom {
+        width: 100%;
+        height: 60%;
+        position: absolute;
+        bottom: 0;
+        border-radius: 32px;
+        box-shadow: 0 -1rem 2rem rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        z-index: 3;
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        h1 {
+            font-size: 1.7rem;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+        }
+    }
+
+    .login__info {
+        h1 {
+            font-size: 2rem;
+        }
+
+        img {
+            width: 80px;
+            height: 80px;
+        }
+
+        p {
+            display: none;
+        }
+    }
+}
