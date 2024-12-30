@@ -15,4 +15,9 @@ class Socio extends Model
         'nombre_socio',
         'celular_socio',
     ];
+
+    public function ventas()
+    {
+        return $this->hasMany(Venta::class, 'id_socio', 'id_socio');
+    }
 }

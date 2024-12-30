@@ -48,31 +48,6 @@ class CreateFuncionesTable extends Migration
         END;
         SQL);
 
-
-        // Trigger para aumentar el stock después de una compra
-        DB::unprepared(<<<SQL
-        CREATE TRIGGER trg_actualizar_stock_compra
-        AFTER INSERT ON detalle_compra
-        FOR EACH ROW
-        BEGIN
-            UPDATE producto
-            SET stock = stock + NEW.cantidad_compra
-            WHERE id_producto = NEW.id_producto;
-        END;
-        SQL);
-
-        // Trigger para reducir el stock después de una venta
-        DB::unprepared(<<<SQL
-        CREATE TRIGGER trg_actualizar_stock_venta
-        AFTER INSERT ON detalle_venta
-        FOR EACH ROW
-        BEGIN
-            UPDATE producto
-            SET stock = stock - NEW.cantidad_venta
-            WHERE id_producto = NEW.id_producto;
-        END;
-        SQL);
-
         // Vista para alertas de stock
         DB::unprepared(<<<SQL
         CREATE VIEW VistaAlertasStock AS

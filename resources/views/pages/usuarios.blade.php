@@ -172,7 +172,7 @@
         <table class="table">
             <thead>
                 <tr>
-                    <th scope="col" class="sticky-id bg-light align-middle">Id</th>
+                    <th scope="col" class="sticky-id bg-light align-middle">ID</th>
                     <th scope="col" class="bg-light align-middle">Nombre</th>
                     <th scope="col" class="bg-light">Celular</th>
                     <th scope="col" class="bg-light">Email</th>

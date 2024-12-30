@@ -117,7 +117,7 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-start mt-4">
+            <div class="d-flex justify-content-end mt-4">
                 <button type="button" id="btn-confirmar" class="btn btn-primary me-2">Guardar Cambios</button>
                 <button type="button" id="btn-cancelar" class="btn btn-secondary">Cancelar</button>
             </div>
@@ -138,7 +138,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" id="btn-confirmar-guardar" class="btn btn-primary">Confirmar</button>
+                    <button type="button" id="btn-confirmar-guardar" class="btn btn-success">Confirmar</button>
                 </div>
             </div>
         </div>

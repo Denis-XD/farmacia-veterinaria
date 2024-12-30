@@ -1,6 +1,6 @@
 <div class="navbar-nav navbar-dark w-100 accordion accordion-flush" id="accordionFlush{{ $data['device'] }}">
     <div class="d-none d-md-block p-2 text-white p-4 mb-4" id="navbarText">
-        <h4 class="m-0">Farmacia ALVA</h4>
+        <h4 class="m-0">Farmacia Veterinaria ALVA</h4>
         <div class="navbar-text text-wrap">
             @if (Auth::check())
                 Bienvenido, <span class="dropdown">
@@ -140,8 +140,8 @@
             <div class="accordion-body">
                 @can('carrera_listar')
                     <li class="nav-item">
-                        <a class="nav-link @if (Route::currentRouteName() == 'carreras.index') active @endif"
-                            href="{{ url('carreras') }}">Compras</a>
+                        <a class="nav-link @if (Route::currentRouteName() == 'compras.index') active @endif"
+                            href="{{ url('compras') }}">Compras</a>
                     </li>
                 @endcan
                 @can('materia_listar')
@@ -152,8 +152,8 @@
                 @endcan
                 @can('grupo_listar')
                     <li class="nav-item">
-                        <a class="nav-link @if (Route::currentRouteName() == 'grupos.index') active @endif"
-                            href="{{ url('grupos') }}">Grupos</a>
+                        <a class="nav-link @if (Route::currentRouteName() == 'compras.index') active @endif"
+                            href="{{ route('compras.dashboard') }}">Dashboard</a>
                     </li>
                 @endcan
             </div>
@@ -162,31 +162,32 @@
     <div class="accordion-item">
         <h2 class="accordion-header">
             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                data-bs-target="#flush-collapseReservas" aria-expanded="false"
-                aria-controls="flush-collapseReservas">
+                data-bs-target="#flush-collapseVentas" aria-expanded="false" aria-controls="flush-collapseReservas">
                 <svg xmlns="http://www.w3.org/2000/svg" height="48" width="48" viewBox="0 0 24 24"
-                    fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-calendar">
+                    fill="currentColor" class="icon icon-tabler icons-tabler-filled icon-tabler-shopping-bag">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path
-                        d="M16 2a1 1 0 0 1 .993 .883l.007 .117v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 1.993 -.117l.007 .117v1h6v-1a1 1 0 0 1 1 -1zm3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16v-9.625z" />
-                    <path
-                        d="M12 12a1 1 0 0 1 .993 .883l.007 .117v3a1 1 0 0 1 -1.993 .117l-.007 -.117v-2a1 1 0 0 1 -.117 -1.993l.117 -.007h1z" />
-                </svg> Reservas
+                        d="M16 6v-1a4 4 0 0 0 -8 0v1h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2zM9 5a2 2 0 0 1 4 0v1h-4v-1zm-2 7a1 1 0 1 1 2 0a1 1 0 0 1 -2 0zm6 0a1 1 0 1 1 2 0a1 1 0 0 1 -2 0z" />
+                </svg> Ventas
             </button>
         </h2>
-        <div id="flush-collapseReservas" class="accordion-collapse collapse"
+        <div id="flush-collapseVentas" class="accordion-collapse collapse"
             data-bs-parent="#accordionFlush{{ $data['device'] }}">
             <div class="accordion-body">
-
-
                 <li class="nav-item">
-                    <a class="nav-link @if (Route::currentRouteName() == 'mis_reservas.index') active @endif"
-                        href="{{ url('mis_reservas') }}">Mis reservas</a>
+                    <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
+                        href="{{ url('ventas') }}">Ventas</a>
                 </li>
                 @can('solicitud_listar')
                     <li class="nav-item">
-                        <a class="nav-link @if (Route::currentRouteName() == 'solicitudes.index') active @endif"
-                            href="{{ url('solicitudes') }}">Solicitudes</a>
+                        <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
+                            href="{{ route('ventas.registrar') }}">Registrar venta</a>
+                    </li>
+                @endcan
+                @can('grupo_listar')
+                    <li class="nav-item">
+                        <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
+                            href="{{ route('ventas.dashboard') }}">Dashboard</a>
                     </li>
                 @endcan
             </div>

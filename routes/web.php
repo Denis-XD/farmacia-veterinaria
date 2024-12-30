@@ -7,21 +7,17 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MateriaController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RolController;
-use App\Http\Controllers\TipoAmbienteController;
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\GrupoController;
-use App\Http\Controllers\ImparteController;
 use App\Http\Controllers\MensajeController;
 use App\Http\Controllers\MisReservasController;
 use App\Http\Controllers\NotificacionController;
-use App\Http\Controllers\ReservaController;
-use App\Http\Controllers\SolicitudesController;
 use App\Http\Controllers\ReglasController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\SocioController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\CompraController;
+use App\Http\Controllers\VentaController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -39,7 +35,7 @@ use Illuminate\Support\Facades\Auth;
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('reservas');
 
-   Route::resource('roles', RolController::class)->names([
+    Route::resource('roles', RolController::class)->names([
         'index' => 'roles.index',
         'create' => 'roles.create',
         'store' => 'roles.store',
@@ -145,6 +141,8 @@ Route::middleware('auth')->group(function () {
     ]);
 
     Route::get('compras/registrar', [CompraController::class, 'registrar'])->name('compras.registrar');
+    Route::get('/compras/{id}/descargar', [CompraController::class, 'descargarPdf'])->name('compras.descargar');
+    Route::get('/compras/dashboard', [CompraController::class, 'dashboard'])->name('compras.dashboard');
 
     Route::resource('compras', CompraController::class)->names([
         'index' => 'compras.index',
@@ -166,33 +164,20 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'cambiar_contrasena.destroy',
     ]);
 
-    Route::post('/reserva/generica', [ReservaController::class, 'storeGenerica'])->name('reserva.generica');
-    Route::post('/reserva/grupal', [ReservaController::class, 'storeReservaGrupal'])->name('reserva.grupal.store');
-    Route::get('/reserva/grupal/{user_id}', [ReservaController::class, 'reservaGrupal'])->name('reserva.grupal');
+    Route::get('ventas/registrar', [VentaController::class, 'registrar'])->name('ventas.registrar');
+    Route::get('/ventas/{id}/descargar', [VentaController::class, 'descargarPdf'])->name('ventas.descargar');
+    Route::get('/ventas/reporte-utilidad', [VentaController::class, 'generarReporteUtilidad'])->name('ventas.reporteUtilidad');
+    Route::get('/ventas/reporte-utilidad/pdf', [VentaController::class, 'descargarReportePdf'])->name('ventas.descargarReportePdf');
+    Route::get('/ventas/dashboard', [VentaController::class, 'dashboard'])->name('ventas.dashboard');
 
-    Route::resource('reserva', ReservaController::class)->names([
-        'index' => 'reserva.index',
-        'create' => 'reserva.create',
-        'store' => 'reserva.store',
-        'show' => 'reserva.show',
-        'edit' => 'reserva.edit',
-        'update' => 'reserva.update',
-        'destroy' => 'reserva.destroy',
-    ]);
-
-    Route::get('solicitudes/asignar-ambiente/{reserva_id}', [SolicitudesController::class, 'asignarAmbiente'])->name('solicitudes.asignarAmbiente');
-    Route::post('solicitudes/confirmar-asignacion/{reserva_id}', [SolicitudesController::class, 'confirmarAsignacion'])->name('solicitudes.confirmarAsignacion');
-    Route::patch('/solicitudes/aceptar/{id}', [SolicitudesController::class, 'aceptar'])->name('solicitudes.aceptar');
-    Route::patch('/solicitudes/rechazar/{id}', [SolicitudesController::class, 'rechazar'])->name('solicitudes.rechazar');
-
-    Route::resource('solicitudes', SolicitudesController::class)->names([
-        'index' => 'solicitudes.index',
-        'create' => 'solicitudes.create',
-        'store' => 'solicitudes.store',
-        'show' => 'solicitudes.show',
-        'edit' => 'solicitudes.edit',
-        'update' => 'solicitudes.update',
-        'destroy' => 'solicitudes.destroy',
+    Route::resource('ventas', VentaController::class)->names([
+        'index' => 'ventas.index',
+        'create' => 'ventas.create',
+        'store' => 'ventas.store',
+        'show' => 'ventas.show',
+        'edit' => 'ventas.edit',
+        'update' => 'ventas.update',
+        'destroy' => 'ventas.destroy',
     ]);
 
     Route::patch('mis_reservas/{id}/cancel', [MisReservasController::class, 'cancel'])->name('mis_reservas.cancel');
@@ -247,7 +232,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('logout', [UserController::class, 'logout'])->name('users.logout');
     Route::match(['get', 'post'], '/reservarAmbiente', [AmbienteController::class, 'indexAmbientes'])->name('ambientes.indexAmbientes');
-    
 });
 Route::get('login', function () {
     if (Auth::check()) {

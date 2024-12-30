@@ -16,27 +16,29 @@ class CreateVentasTable extends Migration
     {
         Schema::create('venta', function (Blueprint $table) {
             $table->bigIncrements('id_venta');
-            $table->unsignedBigInteger('id_usuario'); 
+            $table->unsignedBigInteger('id_usuario');
             $table->unsignedBigInteger('id_socio')->nullable();
-            $table->timestamp('fecha_venta')->default(DB::raw('CURRENT_TIMESTAMP'));
-            $table->string('tipo_venta', 191);
-            $table->double('total_venta');
+            $table->dateTime('fecha_venta', 3)->default(DB::raw('CURRENT_TIMESTAMP(3)'));
+            $table->double('total_venta', 10, 2);
+            $table->boolean('credito')->default(false);
+            $table->boolean('servicio')->default(false);
             $table->boolean('finalizada')->default(false);
-            $table->timestamps(); 
-        
+            $table->string('descripcion', 200)->nullable();
+            $table->timestamps();
+
             // Llaves foráneas
             $table->foreign('id_usuario')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade')
-                  ->onUpdate('cascade');
-        
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
             $table->foreign('id_socio')
-                  ->references('id_socio')
-                  ->on('socio')
-                  ->onDelete('set null')
-                  ->onUpdate('cascade');
-        });        
+                ->references('id_socio')
+                ->on('socio')
+                ->onDelete('set null')
+                ->onUpdate('cascade');
+        });
     }
 
     /**

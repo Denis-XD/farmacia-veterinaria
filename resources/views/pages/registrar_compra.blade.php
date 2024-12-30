@@ -10,7 +10,7 @@
                             d="M12.707 2.293l9 9c.63 .63 .184 1.707 -.707 1.707h-1v6a3 3 0 0 1 -3 3h-1v-7a3 3 0 0 0 -2.824 -2.995l-.176 -.005h-2a3 3 0 0 0 -3 3v7h-1a3 3 0 0 1 -3 -3v-6h-1c-.89 0 -1.337 -1.077 -.707 -1.707l9 -9a1 1 0 0 1 1.414 0m.293 11.707a1 1 0 0 1 1 1v7h-4v-7a1 1 0 0 1 .883 -.993l.117 -.007z" />
                     </svg></a></li>
             <li class="breadcrumb-item"><a href="{{ route('reservas') }}">Inicio</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Compras</li>
+            <li class="breadcrumb-item"><a href="{{ route('compras.index') }}">Compras</a></li>
             <li class="breadcrumb-item active" aria-current="page">Registrar compra</li>
         </ol>
     </nav>
@@ -123,7 +123,7 @@
             <!-- Porcentaje de Descuento -->
             <div class="col-auto d-flex align-items-center">
                 <label for="porcentajeDescuento" class="form-label mb-0 me-2">Porcentaje de Descuento:</label>
-                <input type="number" id="porcentajeDescuento" class="form-control" placeholder="1-100" min="1"
+                <input type="number" id="porcentajeDescuento" class="form-control" placeholder="0-100" min="0"
                     max="100" style="max-width: 100px;">
             </div>
             <!-- Opciones de Factura -->
@@ -132,10 +132,13 @@
                 <label class="form-check-label mb-0" for="compraConFactura">¿Compra con factura?</label>
             </div>
         </div>
+
         <!-- Resumen de Compra -->
-        <div class="d-flex justify-content-between">
-            <h5>Total de la Compra: <span id="totalCompra">Bs 0.00</span></h5>
-            <button class="btn btn-success" id="finalizarCompra">Finalizar Compra</button>
+        <div class="d-flex align-items-center flex-wrap gap-2 justify-content-between">
+            <h5 class="mb-0">Total de la Compra: <span id="totalCompra">Bs 0.00</span></h5>
+            <div class="ms-auto">
+                <button class="btn btn-success mt-2 mt-md-0" id="finalizarCompra">Finalizar Compra</button>
+            </div>
         </div>
 
         <!-- Modal Confirmación -->
@@ -143,7 +146,7 @@
             aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
-                    <div class="modal-header">
+                    <div class="modal-header bg-secondary text-white">
                         <h5 class="modal-title" id="confirmarCompraModalLabel">Confirmar Compra</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -214,6 +217,22 @@
                 font-size: 10px;
                 padding: 0.25rem 0.5rem;
                 /* Botones más pequeños para adaptarse a móviles */
+            }
+        }
+
+        @media (max-width: 768px) {
+            .d-flex.gap-2.justify-content-between {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .d-flex.gap-2.justify-content-between .ms-auto {
+                align-self: stretch;
+                width: 100%;
+            }
+
+            .d-flex.gap-2.justify-content-between button {
+                width: 100%;
             }
         }
     </style>
@@ -424,9 +443,71 @@
             modal.show();
         });
 
-        document.getElementById('confirmarCompra').addEventListener('click', function() {
-            showNotification('Compra registrada con éxito.', 'success');
-            location.reload();
+        document.getElementById('confirmarCompra').addEventListener('click', async function() {
+            const modalElement = document.getElementById('confirmarCompraModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+
+            if (!proveedorSeleccionado) {
+                showNotification('Debe seleccionar un proveedor.', 'danger');
+                return;
+            }
+
+            if (productosSeleccionados.length === 0) {
+                showNotification('Debe seleccionar al menos un producto.', 'danger');
+                return;
+            }
+
+            const porcentajeDescuento = parseInt(document.getElementById('porcentajeDescuento').value) || 0;
+
+            if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
+                showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
+                return;
+            }
+
+            const data = {
+                proveedor_id: proveedorSeleccionado.id_proveedor,
+                factura_compra: document.getElementById('compraConFactura').checked ? 1 : 0,
+                descuento_compra: porcentajeDescuento,
+                productos: productosSeleccionados.map(producto => ({
+                    id: producto.id_producto,
+                    cantidad: producto.cantidad,
+                    subtotal: producto.subtotal,
+                    descripcion: producto.descripcion || null,
+                })),
+            };
+
+            try {
+                // Usa `await` aquí para esperar la respuesta
+                const response = await fetch('/compras', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content'),
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text(); // Leer la respuesta como texto
+                    throw new Error(`Error del servidor: ${errorText}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = result.redirect;
+                    }, 3000);
+                } else {
+                    showNotification(result.message || 'Error al registrar la compra.', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Hubo un error al registrar la compra.', 'danger');
+            }
         });
     </script>
 @endsection

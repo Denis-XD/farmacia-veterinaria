@@ -218,7 +218,7 @@ class ProductoController extends Controller
         } while (Producto::where('codigo_barra', $barcode)->exists());
 
         // Generar el PDF del código de barras
-        $pdf = Pdf::loadView('pages.barcode_pdf', ['barcode' => $barcode, 'nombre' => $nombre]);
+        $pdf = Pdf::loadView('pdf.barcode_pdf', ['barcode' => $barcode, 'nombre' => $nombre]);
 
         // Guardar temporalmente el PDF
         $pdfPath = storage_path("app/public/$nombre-barcode.pdf");

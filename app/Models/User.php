@@ -14,7 +14,11 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $primaryKey = 'id';
     protected $fillable = [
-        'nombre', 'celular_usuario', 'email', 'password', 'active'
+        'nombre',
+        'celular_usuario',
+        'email',
+        'password',
+        'active'
     ];
 
     /**
@@ -23,7 +27,8 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password',
+        'remember_token',
     ];
 
     /**
@@ -39,5 +44,13 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Rol::class, 'id_rol');
     }*/
+    public function isActive()
+    {
+        return $this->active;
+    }
 
+    public function ventas()
+    {
+        return $this->hasMany(Venta::class, 'id_usuario', 'id');
+    }
 }

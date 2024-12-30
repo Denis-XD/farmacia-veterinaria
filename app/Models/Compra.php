@@ -19,6 +19,10 @@ class Compra extends Model
         'factura_compra',
     ];
 
+    protected $casts = [
+        'fecha_compra' => 'datetime',
+    ];
+
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class, 'id_proveedor', 'id_proveedor');
