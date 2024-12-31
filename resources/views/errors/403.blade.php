@@ -15,7 +15,7 @@
         style="background-image: url(/assets/bg.jpg); background-position: center; background-size: cover;">
         <div
             class="d-flex flex-column gap-2 align-items-center justify-content-center glass_card text-white text-center">
-            <h2 class="fs-1">Reserva Fácil</h2>
+            <h2 class="fs-1">Farmacia Veterinaria ALVA</h2>
             <div class="error">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-ban" width="72"
                     height="72" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none"

@@ -19,12 +19,12 @@ class UserSeeder extends Seeder
         // Create admin user
         $admin = User::create([
             'nombre' => 'ADMIN',
-            'celular_usuario' => '77491868',
-            'email' => 'reservafacil@gmail.com',
+            'celular_usuario' => '72760930',
+            'email' => 'alvaplanta1@hotmail.com',
             'password' => bcrypt('admin'),
         ]);
 
-  
+
         // Assign admin role to the user
         $adminRole = Role::where('name', 'ADMIN')->first();
         $admin->roles()->attach($adminRole);
