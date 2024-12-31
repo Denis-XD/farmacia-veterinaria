@@ -64,13 +64,8 @@
                 </div>
                 <div class="col-md-4">
                     <label for="unidad" class="form-label">Unidad</label>
-                    <select name="unidad" id="unidad" class="form-select" required>
-                        <option value="Gramos" {{ $producto->unidad === 'Gramos' ? 'selected' : '' }}>Gramos</option>
-                        <option value="Pieza" {{ $producto->unidad === 'Pieza' ? 'selected' : '' }}>Pieza</option>
-                        <option value="Tableta" {{ $producto->unidad === 'Tableta' ? 'selected' : '' }}>Tableta</option>
-                        <option value="Miligramos" {{ $producto->unidad === 'Miligramos' ? 'selected' : '' }}>Miligramos
-                        </option>
-                    </select>
+                    <input type="text" name="unidad" id="unidad" class="form-control" required maxlength="20"
+                        minlength="2" value="{{ $producto->unidad }}">
                 </div>
             </div>
 

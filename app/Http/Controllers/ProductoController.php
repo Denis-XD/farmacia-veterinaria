@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Producto;
+use App\Models\HistorialInventario;
+use App\Models\Venta;
+use App\Models\Compra;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 
 class ProductoController extends Controller
 {
@@ -78,7 +82,7 @@ class ProductoController extends Controller
         $request->validate([
             'codigo_barra' => 'nullable|string|max:13|min:10|unique:producto,codigo_barra',
             'nombre_producto' => 'required|string|max:50|min:4|unique:producto,nombre_producto',
-            'unidad' => 'required|string|max:15|min:5',
+            'unidad' => 'required|string|max:20|min:2',
             'fecha_vencimiento' => 'nullable|date',
             'porcentaje_utilidad' => 'required|numeric|min:0|max:100',
             'precio_compra' => 'required|numeric|min:0',
@@ -90,8 +94,12 @@ class ProductoController extends Controller
         try {
             DB::beginTransaction();
 
+            // Ajustar formato de unidad
+            $data = $request->all();
+            $data['unidad'] = ucfirst(strtolower($request->unidad)); // Primera letra mayúscula, resto minúscula
+
             // Crear producto
-            $producto = Producto::create($request->all());
+            $producto = Producto::create($data);
 
             // Crear historial de precios
             $producto->historialPrecios()->create([
@@ -108,7 +116,6 @@ class ProductoController extends Controller
             return redirect()->back()->with('error', 'Error al crear el producto: ' . $e->getMessage());
         }
     }
-
     /**
      * Display the specified resource.
      *
@@ -150,7 +157,7 @@ class ProductoController extends Controller
         $request->validate([
             'codigo_barra' => "nullable|string|max:13|min:10|unique:producto,codigo_barra,{$id},id_producto",
             'nombre_producto' => "required|string|max:50|min:4|unique:producto,nombre_producto,{$id},id_producto",
-            'unidad' => 'required|string|max:15|min:5',
+            'unidad' => 'required|string|max:20|min:2',
             'fecha_vencimiento' => 'nullable|date',
             'porcentaje_utilidad' => 'required|numeric|min:0|max:100',
             'precio_compra' => 'required|numeric|min:0',
@@ -165,8 +172,12 @@ class ProductoController extends Controller
             $producto = Producto::findOrFail($id);
             $precioAnterior = $producto->precio_venta_actual;
 
+            // Formatear la unidad
+            $data = $request->all();
+            $data['unidad'] = ucfirst(strtolower($request->unidad)); // Convertir primera letra en mayúscula, resto en minúscula
+
             // Actualizar los datos del producto
-            $producto->update($request->all());
+            $producto->update($data);
 
             // Verificar si el precio de venta ha cambiado
             if ($request->precio_venta_actual != $precioAnterior) {
@@ -192,7 +203,6 @@ class ProductoController extends Controller
             return redirect()->back()->with('error', 'Error al actualizar el producto: ' . $e->getMessage());
         }
     }
-
     /**
      * Remove the specified resource from storage.
      *
@@ -258,5 +268,149 @@ class ProductoController extends Controller
         return response()->json([
             'producto' => $producto
         ]);
+    }
+
+    public function kardex($id)
+    {
+        // Validar que el producto existe
+        $producto = Producto::findOrFail($id);
+
+        // Obtener movimientos ordenados por fecha
+        $movimientos = HistorialInventario::where('id_producto', $id)
+            ->orderBy('fecha', 'asc')
+            ->get();
+
+        // Calcular el saldo acumulativo
+        $saldo = 0;
+        $kardex = $movimientos->map(function ($movimiento) use (&$saldo) {
+            $detalle = $movimiento->motivo;
+
+            // Obtener detalles específicos según el tipo de transacción
+            if ($movimiento->tipo_transaccion === 'Compra' && $movimiento->id_transaccion) {
+                $compra = Compra::find($movimiento->id_transaccion);
+                $detalle = $compra && $compra->proveedor
+                    ? 'Proveedor: ' . $compra->proveedor->nombre_proveedor
+                    : 'Proveedor desconocido';
+            } elseif ($movimiento->tipo_transaccion === 'Venta' && $movimiento->id_transaccion) {
+                $venta = Venta::find($movimiento->id_transaccion);
+                $detalle = $venta
+                    ? ($venta->socio
+                        ? 'Socio: ' . $venta->socio->nombre_socio
+                        : 'Venta sin socio')
+                    : 'Venta desconocida';
+            }
+
+            // Actualizar el saldo acumulativo
+            if ($movimiento->motivo === 'Compra' || $movimiento->motivo === 'Ajuste Positivo') {
+                $saldo += $movimiento->stock; // Entrada
+            } elseif ($movimiento->motivo === 'Venta' || $movimiento->motivo === 'Ajuste Negativo') {
+                $saldo -= $movimiento->stock; // Salida
+            }
+
+            return [
+                'fecha' => $movimiento->fecha->toDateTimeString(),
+                'tipo' => $movimiento->motivo,
+                'detalle' => $detalle,
+                'entrada' => in_array($movimiento->motivo, ['Compra', 'Ajuste Positivo']) ? $movimiento->stock : 0,
+                'salida' => in_array($movimiento->motivo, ['Venta', 'Ajuste Negativo']) ? $movimiento->stock : 0,
+                'saldo' => $saldo,
+            ];
+        });
+
+        return view('pages.producto_kardex', compact('producto', 'kardex'));
+    }
+
+    public function inventario(Request $request)
+    {
+        // Obtener la fecha seleccionada o la fecha actual
+        $fecha = $request->input('fecha', Carbon::now()->toDateString());
+
+        // Obtener los productos con su historial y paginación
+        $productosPaginados = Producto::with(['historialPrecios', 'historialInventario'])
+            ->paginate(10);
+
+        // Procesar los datos para cada producto dentro de la paginación
+        $inventario = collect($productosPaginados->items())->map(function ($producto) use ($fecha) {
+            // Calcular el stock en la fecha seleccionada
+            $stockHistorial = $producto->historialInventario()
+                ->whereDate('fecha', '<=', $fecha)
+                ->orderBy('fecha', 'desc')
+                ->first();
+
+            $stock = $stockHistorial ? $stockHistorial->stock : 0;
+
+            // Obtener el precio en la fecha seleccionada
+            $precioHistorial = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '<=', $fecha)
+                ->where(function ($query) use ($fecha) {
+                    $query->whereNull('fecha_fin')
+                        ->orWhereDate('fecha_fin', '>=', $fecha);
+                })
+                ->orderBy('fecha_inicio', 'desc')
+                ->first();
+
+            $precio = $precioHistorial ? $precioHistorial->precio_venta : 0;
+
+            return [
+                'descripcion' => $producto->nombre_producto,
+                'unidad' => $producto->unidad,
+                'cantidad' => $stock,
+                'precio_unitario' => $precio,
+                'valor' => $stock * $precio,
+            ];
+        });
+
+        // Calcular el valor total
+        $totalValor = $inventario->sum('valor');
+
+        return view('pages.productos_inventario', [
+            'inventario' => $inventario,
+            'productos' => $productosPaginados,
+            'fecha' => $fecha,
+            'totalValor' => $totalValor,
+        ]);
+    }
+
+    public function descargarInventarioPdf(Request $request)
+    {
+        // Obtener la fecha seleccionada o la fecha actual
+        $fecha = $request->input('fecha', Carbon::now()->toDateString());
+
+        // Obtener los datos para el inventario
+        $productos = Producto::with(['historialPrecios', 'historialInventario'])->get();
+
+        $inventario = $productos->map(function ($producto) use ($fecha) {
+            $stockHistorial = $producto->historialInventario()
+                ->whereDate('fecha', '<=', $fecha)
+                ->orderBy('fecha', 'desc')
+                ->first();
+
+            $stock = $stockHistorial ? $stockHistorial->stock : 0;
+
+            $precioHistorial = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '<=', $fecha)
+                ->where(function ($query) use ($fecha) {
+                    $query->whereNull('fecha_fin')
+                        ->orWhereDate('fecha_fin', '>=', $fecha);
+                })
+                ->orderBy('fecha_inicio', 'desc')
+                ->first();
+
+            $precio = $precioHistorial ? $precioHistorial->precio_venta : 0;
+
+            return [
+                'descripcion' => $producto->nombre_producto,
+                'unidad' => $producto->unidad,
+                'cantidad' => $stock,
+                'precio_unitario' => $precio,
+                'valor' => $stock * $precio,
+            ];
+        });
+
+        $totalValor = $inventario->sum('valor');
+
+        // Generar PDF
+        $pdf = PDF::loadView('pdf.inventario_pdf', compact('inventario', 'fecha', 'totalValor'));
+        return $pdf->download('inventario_' . $fecha . '.pdf');
     }
 }

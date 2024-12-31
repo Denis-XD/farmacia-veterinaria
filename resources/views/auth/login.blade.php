@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#003459">
     <title>Inicio de sesión</title>
 
-    <link rel="icon" href="assets/logo.svg" type="image/x-icon">
+    <link rel="icon" href="assets/logo.jpeg" type="image/x-icon">
 
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="{{ asset('css/bootstrap.css') }}" rel="stylesheet">
@@ -34,7 +34,6 @@
             <div class="card__login-rightbottom">
                 <div>
                     <h1 class="text-center">Iniciar sesión</h1>
-                    <h2 class="text-subtitle">Farmacia ALVA</h2>
                 </div>
                 <form class="w-100" method="POST" action="{{ route('users.login') }}">
                     @csrf

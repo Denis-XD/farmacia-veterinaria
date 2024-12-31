@@ -10,7 +10,7 @@
                             d="M12.707 2.293l9 9c.63 .63 .184 1.707 -.707 1.707h-1v6a3 3 0 0 1 -3 3h-1v-7a3 3 0 0 0 -2.824 -2.995l-.176 -.005h-2a3 3 0 0 0 -3 3v7h-1a3 3 0 0 1 -3 -3v-6h-1c-.89 0 -1.337 -1.077 -.707 -1.707l9 -9a1 1 0 0 1 1.414 0m.293 11.707a1 1 0 0 1 1 1v7h-4v-7a1 1 0 0 1 .883 -.993l.117 -.007z" />
                     </svg></a></li>
             <li class="breadcrumb-item"><a href="{{ route('reservas') }}">Inicio</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Productos</li>
+            <li class="breadcrumb-item"><a href="{{ route('productos.index') }}">Productos</a></li>
             <li class="breadcrumb-item active" aria-current="page">Crear Producto</li>
         </ol>
     </nav>
@@ -63,11 +63,8 @@
                 </div>
                 <div class="col-md-4">
                     <label for="unidad" class="form-label">Unidad</label>
-                    <select name="unidad" id="unidad" class="form-select" required>
-                        <option value="Gramos">Gramos</option>
-                        <option value="Pieza">Pieza</option>
-                        <option value="Tableta">Tableta</option>
-                    </select>
+                    <input type="text" name="unidad" id="unidad" class="form-control" maxlength="20" minlength="2"
+                        required>
                 </div>
             </div>
 

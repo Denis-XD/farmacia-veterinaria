@@ -170,6 +170,10 @@
                                     <a href="{{ route('productos.edit', $producto->id_producto) }}"
                                         class="btn btn-warning ms-2 me-2">Editar</a>
                                 @endcan
+                                <a href="{{ route('productos.kardex', $producto->id_producto) }}"
+                                    class="btn btn-primary text-white me-2">
+                                    Kardex
+                                </a>
                                 @can('usuario_eliminar')
                                     <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal"
                                         data-bs-target="#deleteProductoModal{{ $producto->id_producto }}">

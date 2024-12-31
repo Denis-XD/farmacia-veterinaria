@@ -45,40 +45,6 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'roles.destroy',
     ]);
 
-
-    Route::resource('ubicaciones', UbicacionController::class)->names([
-        'index' => 'ubicaciones.index',
-        'create' => 'ubicaciones.create',
-        'store' => 'ubicaciones.store',
-        'show' => 'ubicaciones.show',
-        'edit' => 'ubicaciones.edit',
-        'update' => 'ubicaciones.update',
-        'destroy' => 'ubicaciones.destroy',
-    ]);
-
-
-    Route::resource('carreras', CarreraController::class)->names([
-        'index' => 'carreras.index',
-        'create' => 'carreras.create',
-        'store' => 'carreras.store',
-        'show' => 'carreras.show',
-        'edit' => 'carreras.edit',
-        'update' => 'carreras.update',
-        'destroy' => 'carreras.destroy',
-    ]);
-
-    Route::post('materias/import', [MateriaController::class, 'import'])->name('materias.import');
-
-    Route::resource('materias', MateriaController::class)->names([
-        'index' => 'materias.index',
-        'create' => 'materias.create',
-        'store' => 'materias.store',
-        'show' => 'materias.show',
-        'edit' => 'materias.edit',
-        'update' => 'materias.update',
-        'destroy' => 'materias.destroy',
-    ]);
-
     Route::post('usuarios/import', [UserController::class, 'import'])->name('usuarios.import');
 
     Route::resource('usuarios', UserController::class)->names([
@@ -129,6 +95,9 @@ Route::middleware('auth')->group(function () {
     Route::post('productos/generate-barcode', [ProductoController::class, 'generateBarcode'])->name('generate.barcode');
     Route::get('/productos/stock-minimo', [ProductoController::class, 'productosMinimoStock'])->name('productos.stock_minimo');
     Route::get('productos/buscar2', [ProductoController::class, 'buscar2'])->name('productos.buscar2');
+    Route::get('/productos/kardex/{id}', [ProductoController::class, 'kardex'])->name('productos.kardex');
+    Route::get('/productos/inventario', [ProductoController::class, 'inventario'])->name('productos.inventario');
+    Route::get('/productos/inventario/pdf', [ProductoController::class, 'descargarInventarioPdf'])->name('productos.descargarInventarioPdf');
 
     Route::resource('productos', ProductoController::class)->names([
         'index' => 'productos.index',
@@ -180,17 +149,6 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'ventas.destroy',
     ]);
 
-    Route::patch('mis_reservas/{id}/cancel', [MisReservasController::class, 'cancel'])->name('mis_reservas.cancel');
-
-    Route::resource('mis_reservas', MisReservasController::class)->names([
-        'index' => 'mis_reservas.index',
-        'create' => 'mis_reservas.create',
-        'store' => 'mis_reservas.store',
-        'show' => 'mis_reservas.show',
-        'edit' => 'mis_reservas.edit',
-        'update' => 'mis_reservas.update',
-        'destroy' => 'mis_reservas.destroy',
-    ]);
 
     Route::resource('notificaciones', NotificacionController::class)->names([
         'index' => 'notificaciones.index',
@@ -210,11 +168,6 @@ Route::middleware('auth')->group(function () {
         'edit' => 'notificaciones.edit',
         'update' => 'notificaciones.update',
         'destroy' => 'notificaciones.destroy',
-    ]);
-    Route::resource('reglas', ReglasController::class)->names([
-        'index' => 'reglas.index',
-        'create' => 'reglas.create',
-        'store' => 'reglas.store',
     ]);
 
     Route::resource('mensajes', MensajeController::class)->names([

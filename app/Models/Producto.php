@@ -40,4 +40,10 @@ class Producto extends Model
     {
         return $this->hasMany(DetalleCompra::class, 'id_producto', 'id_producto');
     }
+
+    // Relación con historial de inventario
+    public function historialInventario()
+    {
+        return $this->hasMany(HistorialInventario::class, 'id_producto', 'id_producto');
+    }
 }

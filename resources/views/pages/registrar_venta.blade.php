@@ -139,6 +139,14 @@
             </div>
         </div>
 
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-6 d-flex align-items-center">
+                <label for="porcentaje_descuento" class="form-label mb-0 me-2">Porcentaje de Descuento:</label>
+                <input type="number" id="porcentaje_descuento" class="form-control" value="0" min="0"
+                    max="100" step="1" style="max-width: 80px;">
+            </div>
+        </div>
+
         <!-- Total de la Venta -->
         <div class="d-flex align-items-center flex-wrap gap-2 justify-content-between">
             <div class="d-flex align-items-center gap-1">
@@ -250,15 +258,17 @@
             const totalVentaInput = document.getElementById('totalVentaInput');
             const montoPagadoInput = document.getElementById('monto_pagado');
             const saldoPendienteInput = document.getElementById('saldo_pendiente');
+            const porcentajeDescuentoInput = document.getElementById('porcentaje_descuento');
 
-            // Actualizar saldo pendiente cuando cambia el total
+            // Actualizar saldo pendiente y total al cambiar el porcentaje de descuento
+            porcentajeDescuentoInput.addEventListener('input', actualizarTotal);
+
             totalVentaInput.addEventListener('input', () => {
                 const total = parseFloat(totalVentaInput.value) || 0;
                 const pagado = parseFloat(montoPagadoInput.value) || 0;
                 saldoPendienteInput.value = (total - pagado).toFixed(2);
             });
 
-            // Actualizar saldo pendiente cuando cambia el monto pagado
             montoPagadoInput.addEventListener('input', () => {
                 const total = parseFloat(totalVentaInput.value) || 0;
                 const pagado = parseFloat(montoPagadoInput.value) || 0;
@@ -266,10 +276,8 @@
             });
         });
 
-        document.getElementById('btnBuscarProducto').addEventListener('click', function() {
+        document.getElementById('btnBuscarProducto').addEventListener('click', () => {
             const buscar = document.getElementById('buscarProducto').value.toLowerCase();
-
-            // Filtrar productos localmente
             const resultados = productos.filter(producto =>
                 producto.id_producto.toString().includes(buscar) ||
                 (producto.codigo_barra && producto.codigo_barra.includes(buscar)) ||
@@ -284,15 +292,15 @@
                 tabla.classList.remove('d-none');
                 resultados.forEach(producto => {
                     tbody.innerHTML += `
-            <tr>
-                <td>${producto.id_producto}</td>
-                <td>${producto.codigo_barra || 'N/A'}</td>
-                <td>${producto.nombre_producto}</td>
-                <td>${producto.stock}</td>
-                <td>
-                    <button class="btn btn-success btn-sm btn-choose-producto" data-id="${producto.id_producto}">Añadir</button>
-                </td>
-            </tr>`;
+                <tr>
+                    <td>${producto.id_producto}</td>
+                    <td>${producto.codigo_barra || 'N/A'}</td>
+                    <td>${producto.nombre_producto}</td>
+                    <td>${producto.stock}</td>
+                    <td>
+                        <button class="btn btn-success btn-sm btn-choose-producto" data-id="${producto.id_producto}">Añadir</button>
+                    </td>
+                </tr>`;
                 });
             } else {
                 tabla.classList.add('d-none');
@@ -315,9 +323,7 @@
         });
 
         function añadirProducto(producto) {
-            const existe = productosSeleccionados.some(p => p.id_producto === producto.id_producto);
-
-            if (existe) {
+            if (productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
                 showNotification('El producto ya está añadido.', 'danger');
                 return;
             }
@@ -339,19 +345,43 @@
 
             productosSeleccionados.forEach(producto => {
                 tbody.innerHTML += `
-        <tr>
-            <td>${producto.nombre_producto}</td>
-            <td>Bs ${producto.precio_venta_actual.toFixed(2)}</td>
-            <td>
-                <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
-                       min="1" max="${producto.stock}" 
-                       onchange="actualizarCantidad(${producto.id_producto}, this.value)">
-            </td>
-            <td>Bs ${(producto.cantidad * producto.precio_venta_actual).toFixed(2)}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="quitarProducto(${producto.id_producto})">Quitar</button></td>
-        </tr>`;
+            <tr>
+                <td>${producto.nombre_producto}</td>
+                <td>Bs ${producto.precio_venta_actual.toFixed(2)}</td>
+                <td>
+                    <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
+                        min="1" max="${producto.stock}" 
+                        onchange="actualizarCantidad(${producto.id_producto}, this.value)">
+                </td>
+                <td class="d-flex align-items-center gap-1 flex-wrap">
+                    <span>Bs</span>
+                    <input type="number" class="form-control subtotal" 
+                        value="${producto.subtotal.toFixed(2)}" 
+                        min="0" 
+                        onchange="actualizarSubtotal(${producto.id_producto}, this.value)" 
+                        style="max-width: 80px;">
+                </td>
+                <td><button class="btn btn-danger btn-sm" onclick="quitarProducto(${producto.id_producto})">Quitar</button></td>
+            </tr>`;
             });
 
+            actualizarTotal();
+        }
+
+        function actualizarSubtotal(idProducto, nuevoSubtotal) {
+            const producto = productosSeleccionados.find(p => p.id_producto === idProducto);
+
+            if (!producto) {
+                return;
+            }
+
+            const subtotalNumerico = parseFloat(nuevoSubtotal);
+            if (isNaN(subtotalNumerico) || subtotalNumerico < 0) {
+                showNotification('El subtotal debe ser un número válido mayor o igual a cero.', 'danger');
+                return;
+            }
+
+            producto.subtotal = subtotalNumerico;
             actualizarTotal();
         }
 
@@ -362,10 +392,8 @@
                 return;
             }
 
-            const cant = cantidad.trim();
-            const cantidadNumerica = parseInt(cant, 10);
-
-            if (cantidadNumerica < 1 || cantidadNumerica > producto.stock || !cant || isNaN(cantidadNumerica)) {
+            const cantidadNumerica = parseInt(cantidad, 10);
+            if (cantidadNumerica < 1 || cantidadNumerica > producto.stock || isNaN(cantidadNumerica)) {
                 showNotification('La cantidad debe estar entre 1 y el stock disponible.', 'danger');
                 renderProductos();
                 return;
@@ -382,9 +410,19 @@
         }
 
         function actualizarTotal() {
-            const total = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
-            document.getElementById('totalVentaInput').value = total.toFixed(2);
-            document.getElementById('monto_pagado').dispatchEvent(new Event('input')); // Forzar actualización
+            const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
+            const porcentajeDescuento = parseFloat(document.getElementById('porcentaje_descuento').value) || 0;
+
+            if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
+                showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
+                return;
+            }
+
+            const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
+            const totalConDescuento = totalSinDescuento - descuento;
+
+            document.getElementById('totalVentaInput').value = totalConDescuento.toFixed(2);
+            document.getElementById('monto_pagado').dispatchEvent(new Event('input'));
         }
 
         function showNotification(message, type) {
@@ -402,6 +440,25 @@
                 notification.classList.remove('show');
                 notification.addEventListener('transitionend', () => notification.remove());
             }, 3000);
+        }
+
+        document.getElementById('porcentaje_descuento').addEventListener('input', actualizarTotal);
+
+        function actualizarTotal() {
+            const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
+            const porcentajeDescuento = parseFloat(document.getElementById('porcentaje_descuento').value) || 0;
+
+            if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
+                showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
+                return;
+            }
+
+            const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
+            const totalConDescuento = totalSinDescuento - descuento;
+
+            document.getElementById('totalVentaInput').value = totalConDescuento.toFixed(2);
+            document.getElementById('monto_pagado').dispatchEvent(new Event(
+                'input')); // Forzar actualización del saldo pendiente
         }
 
         document.getElementById('finalizarVenta').addEventListener('click', function() {

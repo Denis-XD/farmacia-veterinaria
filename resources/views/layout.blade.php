@@ -7,9 +7,9 @@
 
     <meta name="theme-color" content="#003459">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Reserva Facil</title>
+    <title>Farmacia Veterinaria ALVA</title>
 
-    <link rel="icon" href="assets/logo.svg" type="image/x-icon">
+    <link rel="icon" href="assets/logo.jpeg" type="image/x-icon">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">

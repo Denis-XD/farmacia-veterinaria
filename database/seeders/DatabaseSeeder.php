@@ -18,12 +18,6 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             RoleHasPermissionSeeder::class,
             UserSeeder::class,
-            TipoAmbienteSeeder::class,
-            UbicacionesSeeder::class,
-            PeriodoSeeder::class,
-            EstadosSeeder::class,
-            TipoNotificacionSeeder::class,
-            EstadoMensajeSeeder::class,
         ]);
     }
 }

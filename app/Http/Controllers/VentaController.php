@@ -9,6 +9,7 @@ use App\Models\DetalleVenta;
 use App\Models\Pago;
 use App\Models\Servicio;
 use App\Models\Compra;
+use App\Models\HistorialInventario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -128,6 +129,15 @@ class VentaController extends Controller
 
                 Producto::where('id_producto', $producto['id'])
                     ->decrement('stock', $producto['cantidad']);
+
+                HistorialInventario::create([
+                    'id_producto' => $producto['id'],
+                    'stock' => $producto['cantidad'],
+                    'fecha' => now(),
+                    'motivo' => 'Venta',
+                    'id_transaccion' => $venta->id_venta,
+                    'tipo_transaccion' => 'Venta',
+                ]);
             }
 
             Pago::create([

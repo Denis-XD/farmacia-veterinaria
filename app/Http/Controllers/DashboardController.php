@@ -2,28 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Ambiente;
-use App\Models\Carrera;
-use App\Models\Estado;
-use App\Models\Grupo;
-use App\Models\Materia;
-use App\Models\Reserva;
-use App\Models\TipoAmbiente;
-use App\Models\Ubicacion;
-use App\Models\User;
-use App\Models\Reglamento;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use Carbon\Carbon;
+use App\Models\Compra;
+use App\Models\Venta;
+use App\Models\Producto;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-    
+        // Obtener el usuario autenticado
+        $usuario = Auth::user();
 
-        return view('pages.preubas');
+        // Cantidad de compras del día
+        $comprasHoy = Compra::whereDate('fecha_compra', Carbon::today())->count();
+
+        // Cantidad de ventas del día
+        $ventasHoy = Venta::whereDate('fecha_venta', Carbon::today())->count();
+
+        // Total de productos
+        $totalProductos = Producto::count();
+
+        return view('pages.dashboard', compact('usuario', 'comprasHoy', 'ventasHoy', 'totalProductos'));
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Proveedor;
 use App\Models\Producto;
 use App\Models\Compra;
+use App\Models\HistorialInventario;
 use App\Models\DetalleCompra;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -127,6 +128,16 @@ class CompraController extends Controller
                 // Actualizar stock del producto
                 Producto::where('id_producto', $producto['id'])
                     ->increment('stock', $producto['cantidad']);
+
+                // Registrar en el historial de inventario
+                HistorialInventario::create([
+                    'id_producto' => $producto['id'],
+                    'stock' => $producto['cantidad'],
+                    'fecha' => now(),
+                    'motivo' => 'Compra',
+                    'id_transaccion' => $compra->id_compra,
+                    'tipo_transaccion' => 'Compra',
+                ]);
             }
 
             DB::commit();
