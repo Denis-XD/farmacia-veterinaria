@@ -1,8 +1,8 @@
 <div>
-    <div class="offcanvas offcanvas-start bg-primary d-md-none" tabindex="-1" id="offcanvasExample"
+    <div class="offcanvas offcanvas-start bg-farma d-md-none" tabindex="-1" id="offcanvasExample"
         aria-labelledby="offcanvasExampleLabel">
         <div class="offcanvas-header">
-            <h5 class="offcanvas-title text-light" id="offcanvasExampleLabel">Reserva Fácil</h5>
+            <h5 class="offcanvas-title text-light" id="offcanvasExampleLabel">Farmacia Veterinaria ALVA</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
                 aria-label="Close"></button>
         </div>
@@ -12,7 +12,7 @@
         </div>
     </div>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary d-md-none">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-farma d-md-none">
         <div class="container">
             <div class="d-flex align-items-center">
                 <button class="btn d-block d-md-none" type="button" data-bs-toggle="offcanvas"

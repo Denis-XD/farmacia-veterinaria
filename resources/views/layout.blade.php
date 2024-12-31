@@ -92,7 +92,7 @@
 <body class="bg-light">
     @include('components.navbar')
     <div class="d-flex">
-        <div class="side_navigation bg-primary">
+        <div class="side_navigation bg-farma">
             <?php $data = ['device' => 'Mobile']; ?>
             @include('components.navigation', $data)
         </div>

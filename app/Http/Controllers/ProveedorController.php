@@ -19,7 +19,7 @@ class ProveedorController extends Controller
      */
     public function index(Request $request)
     {
-        abort_if(Gate::denies('usuario_listar'), 403);
+        abort_if(Gate::denies('proveedor_listar'), 403);
 
         $buscar = $request->get('buscar');
 
@@ -74,7 +74,7 @@ class ProveedorController extends Controller
      */
     public function store(Request $request)
     {
-        abort_if(Gate::denies('materia_crear'), 403);
+        abort_if(Gate::denies('proveedor_crear'), 403);
         $messages = require_once app_path('config/validation.php');
         $request->validate([
             'nombre_proveedor' => 'required|string|max:50|min:4|unique:proveedor,nombre_proveedor',
@@ -122,7 +122,7 @@ class ProveedorController extends Controller
      */
     public function update(Request $request, $id_proveedor)
     {
-        abort_if(Gate::denies('materia_actualizar'), 403);
+        abort_if(Gate::denies('proveedor_actualizar'), 403);
         $messages = require_once app_path('config/validation.php');
         $rules = [
             'nombre_proveedor' => 'required|string|max:50|min:4|unique:proveedor,nombre_proveedor,' . $id_proveedor . ',id_proveedor',
@@ -154,7 +154,7 @@ class ProveedorController extends Controller
      */
     public function destroy($id)
     {
-        abort_if(Gate::denies('materia_eliminar'), 403);
+        abort_if(Gate::denies('proveedor_eliminar'), 403);
         $proveedor = Proveedor::findOrFail($id);
         $proveedor->delete();
 

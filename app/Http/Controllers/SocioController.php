@@ -19,7 +19,7 @@ class SocioController extends Controller
      */
     public function index(Request $request)
     {
-        abort_if(Gate::denies('usuario_listar'), 403);
+        abort_if(Gate::denies('socio_listar'), 403);
 
         $buscar = $request->get('buscar');
 
@@ -70,7 +70,7 @@ class SocioController extends Controller
      */
     public function store(Request $request)
     {
-        abort_if(Gate::denies('materia_crear'), 403);
+        abort_if(Gate::denies('socio_crear'), 403);
         $messages = require_once app_path('config/validation.php');
         $request->validate([
             'nombre_socio' => 'required|string|max:50|min:4|unique:socio,nombre_socio',
@@ -116,7 +116,7 @@ class SocioController extends Controller
      */
     public function update(Request $request, $id_socio)
     {
-        abort_if(Gate::denies('materia_actualizar'), 403);
+        abort_if(Gate::denies('socio_actualizar'), 403);
         $messages = require_once app_path('config/validation.php');
         $rules = [
             'nombre_socio' => 'required|string|max:50|min:4|unique:socio,nombre_socio,' . $id_socio . ',id_socio',

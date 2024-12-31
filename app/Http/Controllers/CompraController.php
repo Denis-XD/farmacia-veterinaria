@@ -10,6 +10,7 @@ use App\Models\Compra;
 use App\Models\HistorialInventario;
 use App\Models\DetalleCompra;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CompraController extends Controller
@@ -21,6 +22,8 @@ class CompraController extends Controller
      */
     public function index(Request $request)
     {
+        abort_if(Gate::denies('compra_listar'), 403);
+
         $orden = $request->get('orden', 'desc'); // Orden por defecto descendente
         $proveedor = $request->get('proveedor', 'all'); // Filtro de proveedor
         $tipo = $request->get('tipo', 'all'); // Filtro por tipo (con o sin factura)
@@ -83,7 +86,8 @@ class CompraController extends Controller
      */
     public function store(Request $request)
     {
-        // Validación del request
+        abort_if(Gate::denies('compra_registrar'), 403);
+
         $request->validate([
             'proveedor_id' => 'required|exists:proveedor,id_proveedor',
             'productos' => 'required|array|min:1',
@@ -203,7 +207,8 @@ class CompraController extends Controller
 
     public function registrar()
     {
-        // Obtener todos los proveedores y productos
+        abort_if(Gate::denies('compra_registrar'), 403);
+
         $proveedores = Proveedor::all();
         $productos = Producto::all();
 
@@ -225,6 +230,8 @@ class CompraController extends Controller
 
     public function dashboard(Request $request)
     {
+        abort_if(Gate::denies('compra_dashboard'), 403);
+
         $fechaInicio = $request->input('fecha_inicio', now()->subMonth()->toDateString());
         $fechaFin = $request->input('fecha_fin', now()->toDateString());
 

@@ -59,13 +59,13 @@
                             href="{{ url('usuarios') }}">Usuarios</a>
                     </li>
                 @endcan
-                @can('usuario_listar')
+                @can('proveedor_listar')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'proveedores.index') active @endif"
                             href="{{ url('proveedores') }}">Proveedores</a>
                     </li>
                 @endcan
-                @can('usuario_listar')
+                @can('socio_listar')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'socios.index') active @endif"
                             href="{{ url('socios') }}">Socios</a>
@@ -101,19 +101,19 @@
             data-bs-parent="#accordionFlush{{ $data['device'] }}">
             <div class="accordion-body">
 
-                @can('ambiente_listar')
+                @can('producto_listar')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'productos.index') active @endif"
                             href="{{ url('productos') }}">Productos</a>
                     </li>
                 @endcan
-                @can('ubicacion_listar')
+                @can('producto_crear')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'productos.index') active @endif"
                             href="{{ route('productos.create') }}">Crear Producto</a>
                     </li>
                 @endcan
-                @can('tipo_ambiente_listar')
+                @can('producto_verifi_stock')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'productos.index') active @endif"
                             href="{{ route('productos.stock_minimo') }}">Verificar Stock @if ($cantidadProductosStock > 0)
@@ -122,7 +122,7 @@
                         </a>
                     </li>
                 @endcan
-                @can('ubicacion_listar')
+                @can('producto_inventario')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'productos.index') active @endif"
                             href="{{ route('productos.inventario') }}">Inventario</a>
@@ -144,19 +144,19 @@
         <div id="flush-collapseCompras" class="accordion-collapse collapse"
             data-bs-parent="#accordionFlush{{ $data['device'] }}">
             <div class="accordion-body">
-                @can('carrera_listar')
+                @can('compra_listar')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'compras.index') active @endif"
                             href="{{ url('compras') }}">Compras</a>
                     </li>
                 @endcan
-                @can('materia_listar')
+                @can('compra_registrar')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'compras.index') active @endif"
                             href="{{ route('compras.registrar') }}">Registrar compra</a>
                     </li>
                 @endcan
-                @can('grupo_listar')
+                @can('compra_dashboard')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'compras.index') active @endif"
                             href="{{ route('compras.dashboard') }}">Dashboard</a>
@@ -180,17 +180,19 @@
         <div id="flush-collapseVentas" class="accordion-collapse collapse"
             data-bs-parent="#accordionFlush{{ $data['device'] }}">
             <div class="accordion-body">
+                @can('venta_listar')
                 <li class="nav-item">
                     <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
                         href="{{ url('ventas') }}">Ventas</a>
                 </li>
-                @can('solicitud_listar')
+                @endcan
+                @can('venta_registrar')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
                             href="{{ route('ventas.registrar') }}">Registrar venta</a>
                     </li>
                 @endcan
-                @can('grupo_listar')
+                @can('venta_dashboard')
                     <li class="nav-item">
                         <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
                             href="{{ route('ventas.dashboard') }}">Dashboard</a>
@@ -264,5 +266,4 @@
                 </svg> Salir</a>
         </li>
     @endif
-
 </div>

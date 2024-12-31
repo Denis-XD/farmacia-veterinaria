@@ -40,7 +40,7 @@
             </div>
         @endif
     </div>
-    @can('usuario_crear')
+    @can('socio_crear')
         <div class="d-flex justify-content-end my-3">
             <button class="btn btn-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#importModal">
                 <i class="bi bi-upload"></i> Cargar
@@ -168,13 +168,13 @@
                                         Eliminar
                                     </button>
                                 @endcan
-                                @can('usuario_actualizar')
+                                @can('socio_actualizar')
                                     <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
                                         data-bs-target="#editSocioModal{{ $socio->id_socio }}">
                                         Editar
                                     </button>
                                 @endcan
-                                @can('usuario_actualizar')
+                                @can('socio_actualizar')
                                     <div class="modal fade" id="editSocioModal{{ $socio->id_socio }}" tabindex="-1"
                                         aria-labelledby="editSocioModalLabel" aria-hidden="true">
                                         <div class="modal-dialog">
@@ -191,17 +191,18 @@
                                                     <div class="modal-body ">
                                                         <div class="mb-3 mt-3 mx-3">
                                                             <label for="nombre_socio" class="form-label">Nombre:</label>
-                                                            <input type="text" class="form-control" id="nombre_socio" name="nombre_socio"
-                                                                value="{{ $socio->nombre_socio }}" placeholder="Nombre"  
-                                                                pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ ]+"  maxlength="50" minlength="4"
+                                                            <input type="text" class="form-control" id="nombre_socio"
+                                                                name="nombre_socio" value="{{ $socio->nombre_socio }}"
+                                                                placeholder="Nombre" pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ ]+"
+                                                                maxlength="50" minlength="4"
                                                                 oninput="this.value = this.value.replace(/[^A-Za-zñÑáéíóúÁÉÍÓÚ ]/g, '').toUpperCase().substring(0, 50)"
                                                                 style="text-transform:uppercase;" required>
                                                         </div>
                                                         <div style="">
                                                             <div class="mb-3 mx-3">
                                                                 <label for="celular_socio" class="form-label">Celular:</label>
-                                                                <input type="text" class="form-control" id="celular_socio" name="celular_socio"
-                                                                    value="{{ $socio->celular_socio }}"
+                                                                <input type="text" class="form-control" id="celular_socio"
+                                                                    name="celular_socio" value="{{ $socio->celular_socio }}"
                                                                     placeholder="Celular" maxlength="8" minlength="0"
                                                                     oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8)">
                                                             </div>
@@ -217,7 +218,7 @@
                                         </div>
                                     </div>
                                 @endcan
-                                @can('usuario_eliminar')
+                                @can('socio_eliminar')
                                     <div class="modal fade" id="deleteSocioModal{{ $socio->id_socio }}" tabindex="-1"
                                         aria-labelledby="deleteSocioModalLabel" aria-hidden="true">
                                         <div class="modal-dialog">
@@ -249,7 +250,8 @@
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary"
                                                         data-bs-dismiss="modal">Cancelar</button>
-                                                    <form action="{{ route('socios.destroy', $socio->id_socio) }}" method="POST">
+                                                    <form action="{{ route('socios.destroy', $socio->id_socio) }}"
+                                                        method="POST">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-danger">Eliminar</button>

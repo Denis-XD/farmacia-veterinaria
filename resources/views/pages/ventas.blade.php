@@ -116,16 +116,18 @@
             </div>
         </form>
 
-        <div class="d-flex justify-content-end mb-3">
-            <form method="GET" action="{{ route('ventas.reporteUtilidad') }}">
-                @foreach (request()->all() as $key => $value)
-                    @if (!is_null($value))
-                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                    @endif
-                @endforeach
-                <button type="submit" class="btn btn-info text-white">Reporte de Utilidad</button>
-            </form>
-        </div>
+        @can('venta_reporte_utilidad')
+            <div class="d-flex justify-content-end mb-3">
+                <form method="GET" action="{{ route('ventas.reporteUtilidad') }}">
+                    @foreach (request()->all() as $key => $value)
+                        @if (!is_null($value))
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                        @endif
+                    @endforeach
+                    <button type="submit" class="btn btn-info text-white">Reporte de Utilidad</button>
+                </form>
+            </div>
+        @endcan
 
         <!-- Resumen -->
         <div class="d-flex justify-content-between mb-4">
@@ -212,8 +214,10 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <a href="{{ route('ventas.edit', $venta->id_venta) }}"
-                                        class="btn btn-warning ms-2 me-2">Editar</a>
+                                    @can('venta_actualizar')
+                                        <a href="{{ route('ventas.edit', $venta->id_venta) }}"
+                                            class="btn btn-warning ms-2 me-2">Editar</a>
+                                    @endcan
                                     <a href="{{ route('ventas.descargar', $venta->id_venta) }}"
                                         class="btn btn-primary btn-sm text-nowrap">Descargar PDF</a>
                                 </div>

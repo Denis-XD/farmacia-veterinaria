@@ -4553,7 +4553,7 @@ textarea.form-control-lg {
   font-size: 1rem;
   color: var(--bs-accordion-btn-color);
   text-align: left;
-  background-color: var(--bs-accordion-btn-bg);
+  background-color: #398244;
   border: 0;
   border-radius: 0;
   overflow-anchor: none;
@@ -8733,6 +8733,10 @@ textarea.form-control-lg {
 .bg-info {
   --bs-bg-opacity: 1;
   background-color: rgba(var(--bs-info-rgb), var(--bs-bg-opacity)) !important;
+}
+
+.bg-farma{
+  background-color: #398244 !important;
 }
 
 .bg-warning {

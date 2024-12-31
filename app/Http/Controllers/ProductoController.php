@@ -21,7 +21,7 @@ class ProductoController extends Controller
      */
     public function index(Request $request)
     {
-        abort_if(Gate::denies('usuario_listar'), 403);
+        abort_if(Gate::denies('producto_listar'), 403);
 
         $buscar = $request->get('buscar');
 
@@ -76,7 +76,7 @@ class ProductoController extends Controller
      */
     public function store(Request $request)
     {
-        abort_if(Gate::denies('usuario_crear'), 403);
+        abort_if(Gate::denies('producto_crear'), 403);
 
         $messages = require_once app_path('config/validation.php');
         $request->validate([
@@ -135,7 +135,7 @@ class ProductoController extends Controller
      */
     public function edit($id)
     {
-        abort_if(Gate::denies('usuario_actualizar'), 403);
+        abort_if(Gate::denies('producto_actualizar'), 403);
 
         $producto = Producto::with('historialPrecios')->findOrFail($id);
 
@@ -151,7 +151,7 @@ class ProductoController extends Controller
      */
     public function update(Request $request, $id)
     {
-        abort_if(Gate::denies('usuario_actualizar'), 403);
+        abort_if(Gate::denies('producto_actualizar'), 403);
 
         $messages = require_once app_path('config/validation.php');
         $request->validate([
@@ -211,7 +211,7 @@ class ProductoController extends Controller
      */
     public function destroy($id)
     {
-        abort_if(Gate::denies('materia_eliminar'), 403);
+        abort_if(Gate::denies('producto_eliminar'), 403);
         $producto = Producto::findOrFail($id);
         $producto->delete();
 
@@ -250,6 +250,7 @@ class ProductoController extends Controller
 
     public function productosMinimoStock(Request $request)
     {
+        abort_if(Gate::denies('producto_verifi_stock'), 403);
         $productosMinimoStock = DB::table('VistaAlertasStock')
             ->paginate(10)
             ->appends($request->query());
@@ -322,7 +323,7 @@ class ProductoController extends Controller
 
     public function inventario(Request $request)
     {
-        // Obtener la fecha seleccionada o la fecha actual
+        abort_if(Gate::denies('producto_inventario'), 403);
         $fecha = $request->input('fecha', Carbon::now()->toDateString());
 
         // Obtener los productos con su historial y paginación

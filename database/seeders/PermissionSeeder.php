@@ -14,30 +14,6 @@ class PermissionSeeder extends Seeder
     public function run()
     {
         $permissions = [
-            'ambiente_listar',
-            'ambiente_crear',
-            'ambiente_actualizar',
-            'ambiente_eliminar',
-
-            'carrera_listar',
-            'carrera_crear',
-            'carrera_actualizar',
-            'carrera_eliminar',
-
-            'grupo_listar',
-            'grupo_crear',
-            'grupo_actualizar',
-            'grupo_eliminar',
-
-            'materia_carrera_listar',
-            'materia_carrera_crear',
-            'materia_carrera_actualizar',
-            'materia_carrera_eliminar',
-
-            'materia_listar',
-            'materia_crear',
-            'materia_actualizar',
-            'materia_eliminar',
 
             'permiso_listar',
             'permiso_crear',
@@ -49,31 +25,10 @@ class PermissionSeeder extends Seeder
             'rol_actualizar',
             'rol_eliminar',
 
-            'tipo_ambiente_listar',
-            'tipo_ambiente_crear',
-            'tipo_ambiente_actualizar',
-            'tipo_ambiente_eliminar',
-
-            'ubicacion_listar',
-            'ubicacion_crear',
-            'ubicacion_actualizar',
-            'ubicacion_eliminar',
-
             'usuario_listar',
             'usuario_crear',
             'usuario_actualizar',
             'usuario_eliminar',
-
-            'asignacion_listar',
-            'asignacion_crear',
-            'asignacion_actualizar',
-            'asignacion_eliminar',
-
-            'reservar_listar',
-
-            'solicitud_listar',
-            'solicitud_aceptar',
-            'solicitud_rechazar',
 
             'notificacion_listar',
             'notificacion_crear',
@@ -86,7 +41,35 @@ class PermissionSeeder extends Seeder
             'mensaje_detalles',
             'mensaje_editar',
             'mensaje_todos',
-            'enviar_mensaje_correo'
+            'enviar_mensaje_correo',
+
+            'proveedor_listar',
+            'proveedor_crear',
+            'proveedor_actualizar',
+            'proveedor_eliminar',
+
+            'socio_listar',
+            'socio_crear',
+            'socio_actualizar',
+            'socio_eliminar',
+
+            'producto_listar',
+            'producto_crear',
+            'producto_verifi_stock',
+            'producto_inventario',
+            'producto_actualizar',
+            'producto_eliminar',
+
+            'compra_listar',
+            'compra_registrar',
+            'compra_dashboard',
+
+            'venta_listar',
+            'venta_registrar',
+            'venta_dashboard',
+            'venta_actualizar',
+            'venta_reporte_utilidad',
+
         ];
 
         foreach ($permissions as $permission) {

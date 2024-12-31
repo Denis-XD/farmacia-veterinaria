@@ -13,6 +13,7 @@ use App\Models\HistorialInventario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class VentaController extends Controller
@@ -24,6 +25,8 @@ class VentaController extends Controller
      */
     public function index(Request $request)
     {
+        abort_if(Gate::denies('venta_listar'), 403);
+
         $orden = $request->get('orden', 'desc');
         $socio = $request->get('socio', null);
         $fechaEspecifica = $request->get('fecha', null);
@@ -91,6 +94,8 @@ class VentaController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(Gate::denies('venta_registrar'), 403);
+
         $request->validate([
             'productos' => 'required|array|min:1',
             'productos.*.id' => 'required|exists:producto,id_producto',
@@ -182,6 +187,8 @@ class VentaController extends Controller
      */
     public function edit($id)
     {
+        abort_if(Gate::denies('venta_actualizar'), 403);
+
         $venta = Venta::with(['detalles.producto', 'pagos', 'servicioVeterinario'])->findOrFail($id);
         //return response()->json(['venta' => $venta], 200);
         return view('pages.venta_editar', compact('venta'));
@@ -195,6 +202,8 @@ class VentaController extends Controller
      */
     public function update(Request $request, $id)
     {
+        abort_if(Gate::denies('venta_actualizar'), 403);
+
         $request->validate(
             [
                 'credito' => 'required|boolean',
@@ -286,6 +295,8 @@ class VentaController extends Controller
 
     public function registrar()
     {
+        abort_if(Gate::denies('venta_registrar'), 403);
+
         $productos = Producto::where('stock', '>', 0)->get();
         $socios = Socio::all();
         $usuario = Auth::user(); // Obtenemos el usuario autenticado
@@ -305,7 +316,8 @@ class VentaController extends Controller
 
     public function generarReporteUtilidad(Request $request)
     {
-        // Obtener todos los filtros aplicados
+        abort_if(Gate::denies('venta_reporte_utilidad'), 403);
+
         $filtros = $request->all();
 
         // Valores por defecto para filtros booleanos y orden
@@ -416,6 +428,8 @@ class VentaController extends Controller
 
     public function dashboard(Request $request)
     {
+        abort_if(Gate::denies('venta_dashboard'), 403);
+
         $fechaInicio = $request->input('fecha_inicio', now()->subMonth()->toDateString());
         $fechaFin = $request->input('fecha_fin', now()->toDateString());
 

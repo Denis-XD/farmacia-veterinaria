@@ -40,7 +40,7 @@
             </div>
         @endif
     </div>
-    @can('usuario_crear')
+    @can('proveedor_crear')
         <div class="d-flex justify-content-end my-3">
             <button class="btn btn-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#importModal">
                 <i class="bi bi-upload"></i> Cargar
@@ -71,7 +71,8 @@
                 </div>
             </div>
         </div>
-        <div class="modal fade" id="addProveedorModal" tabindex="-1" aria-labelledby="addProveedorModalLabel" aria-hidden="true">
+        <div class="modal fade" id="addProveedorModal" tabindex="-1" aria-labelledby="addProveedorModalLabel"
+            aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -91,7 +92,8 @@
                             <div class="mb-3">
                                 <label for="direccion" class="form-label">Dirección:</label>
                                 <input type="text" class="form-control" id="direccion" name="direccion"
-                                    placeholder="Direccion" pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ. ]+" maxlength="50" minlength="0"
+                                    placeholder="Direccion" pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ. ]+" maxlength="50"
+                                    minlength="0"
                                     oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑáéíóúÁÉÍÓÚ. ]/g, '').toUpperCase().substring(0, 50)"
                                     style="text-transform:uppercase;">
                             </div>
@@ -172,53 +174,60 @@
                         <td>{{ $proveedor->celular_proveedor }}</td>
                         <td class="">
                             <div class="d-flex justify-content-start align-items-center col">
-                                @can('usuario_eliminar')
+                                @can('proveedor_eliminar')
                                     <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal"
                                         data-bs-target="#deleteProveedorModal{{ $proveedor->id_proveedor }}">
                                         Eliminar
                                     </button>
                                 @endcan
-                                @can('usuario_actualizar')
+                                @can('proveedor_actualizar')
                                     <button type="button" class="btn btn-info text-white" data-bs-toggle="modal"
                                         data-bs-target="#editProveedorModal{{ $proveedor->id_proveedor }}">
                                         Editar
                                     </button>
                                 @endcan
-                                @can('usuario_actualizar')
-                                    <div class="modal fade" id="editProveedorModal{{ $proveedor->id_proveedor }}" tabindex="-1"
-                                        aria-labelledby="editProveedorModalLabel" aria-hidden="true">
+                                @can('proveedor_actualizar')
+                                    <div class="modal fade" id="editProveedorModal{{ $proveedor->id_proveedor }}"
+                                        tabindex="-1" aria-labelledby="editProveedorModalLabel" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header">
-                                                    <h5 class="modal-title w-100 text-center" id="editProveedorModalLabel">Editar
+                                                    <h5 class="modal-title w-100 text-center" id="editProveedorModalLabel">
+                                                        Editar
                                                         proveedor</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal"
                                                         aria-label="Close"></button>
                                                 </div>
-                                                <form method="POST" action="{{ route('proveedores.update', $proveedor->id_proveedor) }}">
+                                                <form method="POST"
+                                                    action="{{ route('proveedores.update', $proveedor->id_proveedor) }}">
                                                     @csrf
                                                     @method('PUT')
                                                     <div class="modal-body ">
                                                         <div class="mb-3 mt-3 mx-3">
                                                             <label for="nombre_proveedor" class="form-label">Nombre:</label>
-                                                            <input type="text" class="form-control" id="nombre_proveedor" name="nombre_proveedor"
-                                                                value="{{ $proveedor->nombre_proveedor }}" placeholder="Nombre"  
-                                                                pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ ]+"  maxlength="50" minlength="4"
+                                                            <input type="text" class="form-control" id="nombre_proveedor"
+                                                                name="nombre_proveedor"
+                                                                value="{{ $proveedor->nombre_proveedor }}"
+                                                                placeholder="Nombre" pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ ]+"
+                                                                maxlength="50" minlength="4"
                                                                 oninput="this.value = this.value.replace(/[^A-Za-zñÑáéíóúÁÉÍÓÚ ]/g, '').toUpperCase().substring(0, 50)"
                                                                 style="text-transform:uppercase;" required>
                                                         </div>
                                                         <div class="mb-3 mx-3">
                                                             <label for="direccion" class="form-label">Dirección:</label>
-                                                            <input type="text" class="form-control" id="direccion" name="direccion"
-                                                                value="{{ $proveedor->direccion }}"
-                                                                placeholder="Direccion" pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ. ]+" maxlength="50" minlength="0"
+                                                            <input type="text" class="form-control" id="direccion"
+                                                                name="direccion" value="{{ $proveedor->direccion }}"
+                                                                placeholder="Direccion" pattern="[A-Za-z0-9ñÑáéíóúÁÉÍÓÚ. ]+"
+                                                                maxlength="50" minlength="0"
                                                                 oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑáéíóúÁÉÍÓÚ. ]/g, '').toUpperCase().substring(0, 50)"
                                                                 style="text-transform:uppercase;">
                                                         </div>
                                                         <div style="">
                                                             <div class="mb-3 mx-3">
-                                                                <label for="celular_proveedor" class="form-label">Celular:</label>
-                                                                <input type="text" class="form-control" id="celular_proveedor" name="celular_proveedor"
+                                                                <label for="celular_proveedor"
+                                                                    class="form-label">Celular:</label>
+                                                                <input type="text" class="form-control"
+                                                                    id="celular_proveedor" name="celular_proveedor"
                                                                     value="{{ $proveedor->celular_proveedor }}"
                                                                     placeholder="Celular" maxlength="8" minlength="0"
                                                                     oninput="this.value = this.value.replace(/[^0-9]/g, '').substring(0, 8)">
@@ -235,9 +244,9 @@
                                         </div>
                                     </div>
                                 @endcan
-                                @can('usuario_eliminar')
-                                    <div class="modal fade" id="deleteProveedorModal{{ $proveedor->id_proveedor }}" tabindex="-1"
-                                        aria-labelledby="deleteProveedorModalLabel" aria-hidden="true">
+                                @can('proveedor_eliminar')
+                                    <div class="modal fade" id="deleteProveedorModal{{ $proveedor->id_proveedor }}"
+                                        tabindex="-1" aria-labelledby="deleteProveedorModalLabel" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header text-white bg-danger">
@@ -267,7 +276,9 @@
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary"
                                                         data-bs-dismiss="modal">Cancelar</button>
-                                                    <form action="{{ route('proveedores.destroy', $proveedor->id_proveedor) }}" method="POST">
+                                                    <form
+                                                        action="{{ route('proveedores.destroy', $proveedor->id_proveedor) }}"
+                                                        method="POST">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-danger">Eliminar</button>
