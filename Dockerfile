@@ -1,7 +1,9 @@
-# Usa la imagen oficial de PHP 7.4
-FROM php:7.4-fpm
+FROM php:7.4.1-apache
 
-# Instala las extensiones necesarias de PHP
+USER root
+
+WORKDIR /var/www/html
+
 RUN apt update && apt install -y \
     nano \
     nodejs \
@@ -19,30 +21,23 @@ RUN apt update && apt install -y \
     && docker-php-ext-install -j$(nproc) gd \
     && docker-php-ext-install pdo_mysql \
     && docker-php-ext-install mysqli \
+    && docker-php-ext-install pdo_pgsql \
     && docker-php-ext-install zip \
     && docker-php-source delete
 
-COPY .docker/vhost.conf /etc/apache2/sites-available/000-default.con
-# Configura el directorio de trabajo
-WORKDIR /var/www/html
+COPY .docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 
-# Copia el código del proyecto
 COPY . .
 
-# Instala las dependencias de Laravel
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Da permisos a los directorios necesarios
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html && a2enmod rewrite
 
 # Copia el script de despliegue al contenedor
 COPY .docker/deploy.sh /usr/local/bin/deploy.sh
 
 # Haz que el script sea ejecutable
 RUN chmod +x /usr/local/bin/deploy.sh
-
-# Expone el puerto 9000 (PHP-FPM)
-EXPOSE 9000
 
 # Ejecuta el script de despliegue al iniciar el contenedor
 CMD ["bash", "-c", "/usr/local/bin/deploy.sh && php-fpm"]
