@@ -1,25 +1,28 @@
 # Usa la imagen oficial de PHP 7.4
 FROM php:7.4-fpm
 
-# Instala Node.js y NPM
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
-    apt-get install -y nodejs
-
 # Instala las extensiones necesarias de PHP
-RUN apt-get update && apt-get install -y \
+RUN apt update && apt install -y \
+    nano \
+    nodejs \
+    npm \
     libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
+    zlib1g-dev \
+    libxml2-dev \
+    libzip-dev \
+    libonig-dev \
+    libpq-dev \
     zip \
+    curl \
     unzip \
-    git \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd \
-    && docker-php-ext-install pdo pdo_mysql
+    && docker-php-ext-configure gd \
+    && docker-php-ext-install -j$(nproc) gd \
+    && docker-php-ext-install pdo_mysql \
+    && docker-php-ext-install mysqli \
+    && docker-php-ext-install zip \
+    && docker-php-source delete
 
-# Instala Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
+COPY .docker/vhost.conf /etc/apache2/sites-available/000-default.con
 # Configura el directorio de trabajo
 WORKDIR /var/www/html
 
@@ -27,7 +30,7 @@ WORKDIR /var/www/html
 COPY . .
 
 # Instala las dependencias de Laravel
-RUN composer install --no-dev --optimize-autoloader
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Da permisos a los directorios necesarios
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
