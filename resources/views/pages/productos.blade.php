@@ -134,12 +134,13 @@
                                                     {{ $producto->fecha_vencimiento ?? 'N/A' }}</p>
                                                 <p><strong>Porcentaje de Utilidad:</strong>
                                                     {{ $producto->porcentaje_utilidad }}%</p>
-                                                <p><strong>Precio de Compra:</strong> {{ $producto->precio_compra }}</p>
+                                                <p><strong>Precio de Compra:</strong> {{ $producto->precio_compra_actual }}
+                                                </p>
                                                 <p><strong>Precio Actual:</strong> {{ $producto->precio_venta_actual }}</p>
                                                 <p><strong>Stock:</strong> {{ $producto->stock }}</p>
                                                 <p><strong>Stock Mínimo:</strong> {{ $producto->stock_minimo }}</p>
 
-                                                <h5 class="mt-3">Historial de Precios</h5>
+                                                <h5 class="mt-3">Historial del precio de venta</h5>
                                                 @if ($producto->historialPrecios->isNotEmpty())
                                                     <ul>
                                                         @foreach ($producto->historialPrecios as $historial)
@@ -155,7 +156,26 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    <p>No hay historial de precios.</p>
+                                                    <p>No hay historial del precio de venta.</p>
+                                                @endif
+
+                                                <h5 class="mt-3">Historial del precio de compra</h5>
+                                                @if ($producto->historialPreciosCompra->isNotEmpty())
+                                                    <ul>
+                                                        @foreach ($producto->historialPreciosCompra as $historial)
+                                                            <li>
+                                                                <strong>Precio:</strong> {{ $historial->precio_compra }}
+                                                                (Desde: {{ $historial->fecha_inicio }}
+                                                                @if ($historial->fecha_fin)
+                                                                    Hasta: {{ $historial->fecha_fin }}
+                                                                @else
+                                                                    Actual
+                                                                @endif)
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <p>No hay historial del precio de compra.</p>
                                                 @endif
                                             </div>
                                             <div class="modal-footer">

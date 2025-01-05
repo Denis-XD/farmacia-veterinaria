@@ -17,21 +17,49 @@
             </ol>
         </nav>
         <h2 class="text-center mt-3">Inventario de Productos</h2>
-    </div>
-
-    <div class="container mt-4">
-        <form method="GET" action="{{ route('productos.inventario') }}" class="d-flex justify-content-between mb-3">
-            <div>
-                <label for="fecha">Fecha:</label>
-                <input type="date" name="fecha" id="fecha" value="{{ $fecha }}" class="form-control"
-                    style="width: 200px;">
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert" id='cajaOkey'>
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
-            <button type="submit" class="btn btn-primary align-self-end">Buscar</button>
+        @endif
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {!! session('error') !!}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+        @if ($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <ul class="m-0">
+                    @foreach ($errors->all() as $error)
+                        <li class="m-0">{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+    </div>
+    <div class="container mt-4">
+        <form method="GET" action="{{ route('productos.inventario') }}" class="row g-2 mb-3 align-items-end">
+            <div class="col-12 col-md-auto">
+                <label for="fecha_inicio" class="form-label">Fecha Inicio:</label>
+                <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ $fechaInicio }}"
+                    class="form-control">
+            </div>
+            <div class="col-12 col-md-auto">
+                <label for="fecha_fin" class="form-label">Fecha Fin:</label>
+                <input type="date" name="fecha_fin" id="fecha_fin" value="{{ $fechaFin }}" class="form-control">
+            </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-primary w-100">Buscar</button>
+            </div>
         </form>
 
         <div class="d-flex flex-column flex-md-row align-items-md-center align-items-start mb-3">
             <h5 class="mb-2 mb-md-0">Total valor: Bs {{ number_format($totalValor, 2) }}</h5>
-            <a href="{{ route('productos.descargarInventarioPdf', ['fecha' => $fecha]) }}" class="btn btn-danger ms-auto">
+            <a href="{{ route('productos.descargarInventarioPdf', ['fechaInicio' => $fechaInicio, 'fechaFin' => $fechaFin]) }}"
+                class="btn btn-danger ms-auto">
                 Descargar en PDF
             </a>
         </div>

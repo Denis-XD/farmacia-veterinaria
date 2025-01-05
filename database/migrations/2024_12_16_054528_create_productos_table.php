@@ -20,7 +20,7 @@ class CreateProductosTable extends Migration
             $table->string('unidad', 191);
             $table->dateTime('fecha_vencimiento', 3)->nullable();
             $table->double('porcentaje_utilidad', 8, 2)->default(20.0);
-            $table->double('precio_compra', 8, 2);
+            $table->double('precio_compra_actual', 8, 2);
             $table->double('precio_venta_actual', 8, 2);
             $table->integer('stock');
             $table->integer('stock_minimo')->default(10);

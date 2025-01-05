@@ -28,8 +28,15 @@ class CreateFuncionesTable extends Migration
         FOR EACH ROW
         BEGIN
             IF NEW.stock < NEW.stock_minimo THEN
-                INSERT INTO log_errores (mensaje)
-                VALUES (CONCAT('Stock mínimo alcanzado para el producto: ', NEW.nombre_producto));
+                -- Verifica si ya existe un registro con el mismo mensaje
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM log_errores
+                    WHERE mensaje = CONCAT('Stock mínimo alcanzado para el producto: ', NEW.nombre_producto)
+                ) THEN
+                    INSERT INTO log_errores (mensaje)
+                    VALUES (CONCAT('Stock mínimo alcanzado para el producto: ', NEW.nombre_producto));
+                END IF;
             END IF;
         END;
         SQL);
@@ -77,8 +84,6 @@ class CreateFuncionesTable extends Migration
         // Eliminar triggers
         DB::unprepared('DROP TRIGGER IF EXISTS trg_verificar_stock_minimo;');
         DB::unprepared('DROP TRIGGER IF EXISTS trg_eliminar_stock_minimo;');
-        DB::unprepared('DROP TRIGGER IF EXISTS trg_actualizar_stock_compra;');
-        DB::unprepared('DROP TRIGGER IF EXISTS trg_actualizar_stock_venta;');
 
         // Eliminar procedimiento almacenado
         DB::unprepared('DROP PROCEDURE IF EXISTS sp_actualizar_precio_venta;');

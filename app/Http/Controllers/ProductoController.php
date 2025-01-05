@@ -25,7 +25,7 @@ class ProductoController extends Controller
 
         $buscar = $request->get('buscar');
 
-        $productos = Producto::with(['precioActual', 'historialPrecios'])
+        $productos = Producto::with(['precioActual', 'historialPrecios', 'historialPreciosCompra'])
             ->where(function ($query) use ($buscar) {
                 $terminosBusqueda = explode(' ', $buscar);
 
@@ -85,8 +85,8 @@ class ProductoController extends Controller
             'unidad' => 'required|string|max:20|min:2',
             'fecha_vencimiento' => 'nullable|date',
             'porcentaje_utilidad' => 'required|numeric|min:0|max:100',
-            'precio_compra' => 'required|numeric|min:0',
-            'precio_venta_actual' => 'required|numeric|min:0|gte:precio_compra',
+            'precio_compra_actual' => 'required|numeric|min:0',
+            'precio_venta_actual' => 'required|numeric|min:0|gte:precio_compra_actual',
             'stock' => 'required|integer|min:0',
             'stock_minimo' => 'required|integer|min:0',
         ], $messages);
@@ -108,9 +108,16 @@ class ProductoController extends Controller
                 'fecha_fin' => null,
             ]);
 
+            // Crear historial de precio de compra
+            $producto->historialPreciosCompra()->create([
+                'precio_compra' => $request->precio_compra_actual,
+                'fecha_inicio' => now(),
+                'fecha_fin' => null,
+            ]);
+
             DB::commit();
 
-            return redirect()->route('productos.index')->with('success', 'Producto creado correctamente.');
+            return redirect()->route('productos.create')->with('success', 'Producto creado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Error al crear el producto: ' . $e->getMessage());
@@ -160,8 +167,8 @@ class ProductoController extends Controller
             'unidad' => 'required|string|max:20|min:2',
             'fecha_vencimiento' => 'nullable|date',
             'porcentaje_utilidad' => 'required|numeric|min:0|max:100',
-            'precio_compra' => 'required|numeric|min:0',
-            'precio_venta_actual' => 'required|numeric|min:0|gte:precio_compra',
+            'precio_compra_actual' => 'required|numeric|min:0',
+            'precio_venta_actual' => 'required|numeric|min:0|gte:precio_compra_actual',
             'stock' => 'required|integer|min:0',
             'stock_minimo' => 'required|integer|min:0',
         ], $messages);
@@ -171,6 +178,7 @@ class ProductoController extends Controller
 
             $producto = Producto::findOrFail($id);
             $precioAnterior = $producto->precio_venta_actual;
+            $precioCompraAnterior = $producto->precio_compra_actual;
 
             // Formatear la unidad
             $data = $request->all();
@@ -190,6 +198,22 @@ class ProductoController extends Controller
                 // Crear un nuevo registro en el historial de precios
                 $producto->historialPrecios()->create([
                     'precio_venta' => $request->precio_venta_actual,
+                    'fecha_inicio' => now(),
+                    'fecha_fin' => null,
+                ]);
+            }
+
+            // Verificar si el precio de compra ha cambiado
+            if ($request->precio_compra_actual != $precioCompraAnterior) {
+                // Actualizar el historial actual
+                $historialCompraActual = $producto->historialPreciosCompra()->whereNull('fecha_fin')->first();
+                if ($historialCompraActual) {
+                    $historialCompraActual->update(['fecha_fin' => now()]);
+                }
+
+                // Crear un nuevo registro en el historial de precios
+                $producto->historialPreciosCompra()->create([
+                    'precio_compra' => $request->precio_compra_actual,
                     'fecha_inicio' => now(),
                     'fecha_fin' => null,
                 ]);
@@ -230,22 +254,15 @@ class ProductoController extends Controller
         // Generar el PDF del código de barras
         $pdf = Pdf::loadView('pdf.barcode_pdf', ['barcode' => $barcode, 'nombre' => $nombre]);
 
-        // Guardar temporalmente el PDF
-        $pdfPath = storage_path("app/public/$nombre-barcode.pdf");
-        $pdf->save($pdfPath);
+        // Codificar el PDF como base64 para enviar en la respuesta JSON
+        $pdfContent = $pdf->output();
+        $pdfBase64 = base64_encode($pdfContent);
 
-        // Retornar el código de barras y la URL del PDF como JSON
+        // Retornar el código de barras y el PDF como JSON
         return response()->json([
             'barcode' => $barcode,
-            'pdf_url' => asset("storage/$nombre-barcode.pdf"),
+            'pdf_base64' => $pdfBase64,
         ]);
-
-        // Eliminar el archivo PDF después de enviarlo al cliente
-        register_shutdown_function(function () use ($pdfPath) {
-            if (file_exists($pdfPath)) {
-                unlink($pdfPath);
-            }
-        });
     }
 
     public function productosMinimoStock(Request $request)
@@ -324,33 +341,46 @@ class ProductoController extends Controller
     public function inventario(Request $request)
     {
         abort_if(Gate::denies('producto_inventario'), 403);
-        $fecha = $request->input('fecha', Carbon::now()->toDateString());
+
+        // Validar las fechas
+        $fechaInicio = $request->input('fecha_inicio', Carbon::now()->subMonth()->toDateString());
+        $fechaFin = $request->input('fecha_fin', Carbon::now()->toDateString());
+
+        if (Carbon::parse($fechaInicio)->gt(Carbon::parse($fechaFin))) {
+            return redirect()->back()->with('error', 'Las fechas no son válidas. La fecha de inicio debe ser menor o igual a la fecha de fin.');
+        }
 
         // Obtener los productos con su historial y paginación
-        $productosPaginados = Producto::with(['historialPrecios', 'historialInventario'])
-            ->paginate(10);
+        $productosPaginados = Producto::with(['historialPrecios', 'historialInventario'])->paginate(10);
 
         // Procesar los datos para cada producto dentro de la paginación
-        $inventario = collect($productosPaginados->items())->map(function ($producto) use ($fecha) {
-            // Calcular el stock en la fecha seleccionada
+        $inventario = collect($productosPaginados->items())->map(function ($producto) use ($fechaInicio, $fechaFin) {
+            // Calcular el stock en la fecha fin
             $stockHistorial = $producto->historialInventario()
-                ->whereDate('fecha', '<=', $fecha)
+                ->whereDate('fecha', '<=', $fechaFin)
                 ->orderBy('fecha', 'desc')
                 ->first();
 
             $stock = $stockHistorial ? $stockHistorial->stock : 0;
 
-            // Obtener el precio en la fecha seleccionada
-            $precioHistorial = $producto->historialPrecios()
-                ->whereDate('fecha_inicio', '<=', $fecha)
-                ->where(function ($query) use ($fecha) {
+            // Obtener precios en el rango de fechas
+            $preciosHistorial = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '<=', $fechaFin)
+                ->where(function ($query) use ($fechaInicio) {
                     $query->whereNull('fecha_fin')
-                        ->orWhereDate('fecha_fin', '>=', $fecha);
+                        ->orWhereDate('fecha_fin', '>=', $fechaInicio);
                 })
                 ->orderBy('fecha_inicio', 'desc')
-                ->first();
+                ->get();
 
-            $precio = $precioHistorial ? $precioHistorial->precio_venta : 0;
+            $precio = 0;
+            if ($preciosHistorial->count() == 1) {
+                // Si solo hay un precio en el rango
+                $precio = $preciosHistorial->first()->precio_venta;
+            } elseif ($preciosHistorial->count() > 1) {
+                // Si hay más de un precio, calcular el promedio de los dos más recientes
+                $precio = $preciosHistorial->take(2)->avg('precio_venta');
+            }
 
             return [
                 'descripcion' => $producto->nombre_producto,
@@ -367,37 +397,46 @@ class ProductoController extends Controller
         return view('pages.productos_inventario', [
             'inventario' => $inventario,
             'productos' => $productosPaginados,
-            'fecha' => $fecha,
+            'fechaInicio' => $fechaInicio,
+            'fechaFin' => $fechaFin,
             'totalValor' => $totalValor,
         ]);
     }
 
     public function descargarInventarioPdf(Request $request)
     {
-        // Obtener la fecha seleccionada o la fecha actual
-        $fecha = $request->input('fecha', Carbon::now()->toDateString());
+        // Obtener las fechas seleccionadas o valores predeterminados
+        $fechaInicio = $request->input('fechaInicio', Carbon::now()->subMonth()->toDateString());
+        $fechaFin = $request->input('fechaFin', Carbon::now()->toDateString());
 
         // Obtener los datos para el inventario
         $productos = Producto::with(['historialPrecios', 'historialInventario'])->get();
 
-        $inventario = $productos->map(function ($producto) use ($fecha) {
+        $inventario = $productos->map(function ($producto) use ($fechaInicio, $fechaFin) {
             $stockHistorial = $producto->historialInventario()
-                ->whereDate('fecha', '<=', $fecha)
+                ->whereDate('fecha', '<=', $fechaFin)
                 ->orderBy('fecha', 'desc')
                 ->first();
 
             $stock = $stockHistorial ? $stockHistorial->stock : 0;
 
-            $precioHistorial = $producto->historialPrecios()
-                ->whereDate('fecha_inicio', '<=', $fecha)
-                ->where(function ($query) use ($fecha) {
+            $preciosHistorial = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '<=', $fechaFin)
+                ->where(function ($query) use ($fechaInicio) {
                     $query->whereNull('fecha_fin')
-                        ->orWhereDate('fecha_fin', '>=', $fecha);
+                        ->orWhereDate('fecha_fin', '>=', $fechaInicio);
                 })
                 ->orderBy('fecha_inicio', 'desc')
-                ->first();
+                ->get();
 
-            $precio = $precioHistorial ? $precioHistorial->precio_venta : 0;
+            $precio = 0;
+            if ($preciosHistorial->count() == 1) {
+                // Si solo hay un precio en el rango
+                $precio = $preciosHistorial->first()->precio_venta;
+            } elseif ($preciosHistorial->count() > 1) {
+                // Si hay más de un precio, calcular el promedio de los dos más recientes
+                $precio = $preciosHistorial->take(2)->avg('precio_venta');
+            }
 
             return [
                 'descripcion' => $producto->nombre_producto,
@@ -411,7 +450,7 @@ class ProductoController extends Controller
         $totalValor = $inventario->sum('valor');
 
         // Generar PDF
-        $pdf = PDF::loadView('pdf.inventario_pdf', compact('inventario', 'fecha', 'totalValor'));
-        return $pdf->download('inventario_' . $fecha . '.pdf');
+        $pdf = PDF::loadView('pdf.inventario_pdf', compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor'));
+        return $pdf->download('inventario_' . $fechaInicio . '_al_' . $fechaFin . '.pdf');
     }
 }

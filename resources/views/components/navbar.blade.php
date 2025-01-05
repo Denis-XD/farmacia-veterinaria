@@ -27,7 +27,7 @@
                     @if (Auth::check())
                         Bienvenido,
                         <span class="dropdown">
-                            <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown"
+                            <button class="btn btn-farma  dropdown-toggle" data-bs-toggle="dropdown"
                                 aria-expanded="false">
                                 {{ Auth::user()->nombre }}
                             </button>
@@ -41,7 +41,6 @@
                     @endif
                 </div>
             </div>
-
         </div>
     </nav>
 </div>

@@ -4,7 +4,7 @@
         <div class="navbar-text text-wrap">
             @if (Auth::check())
                 Bienvenido, <span class="dropdown">
-                    <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-farma dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                         {{ Auth::user()->nombre }}
                     </button>
                     <ul class="dropdown-menu">
@@ -181,10 +181,10 @@
             data-bs-parent="#accordionFlush{{ $data['device'] }}">
             <div class="accordion-body">
                 @can('venta_listar')
-                <li class="nav-item">
-                    <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
-                        href="{{ url('ventas') }}">Ventas</a>
-                </li>
+                    <li class="nav-item">
+                        <a class="nav-link @if (Route::currentRouteName() == 'ventas.index') active @endif"
+                            href="{{ url('ventas') }}">Ventas</a>
+                    </li>
                 @endcan
                 @can('venta_registrar')
                     <li class="nav-item">

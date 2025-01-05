@@ -134,28 +134,29 @@
         <div class="row mb-4">
             <div class="col-12">
                 <label for="descripcion" class="form-label">Descripción (Opcional):</label>
-                <textarea id="descripcion" name="descripcion" class="form-control" rows="3"
+                <textarea id="descripcion" name="descripcion" class="form-control" rows="1"
                     placeholder="Ingrese una descripción (opcional)..."></textarea>
             </div>
         </div>
 
         <div class="row mb-4 align-items-center">
-            <div class="col-md-6 d-flex align-items-center">
-                <label for="porcentaje_descuento" class="form-label mb-0 me-2">Porcentaje de Descuento:</label>
+            <!-- Porcentaje de Descuento -->
+            <div class="col-12 col-md-auto d-flex align-items-center gap-2 mb-2 mb-md-0">
+                <label for="porcentaje_descuento" class="form-label mb-0">Porcentaje de Descuento:</label>
                 <input type="number" id="porcentaje_descuento" class="form-control" value="0" min="0"
                     max="100" step="1" style="max-width: 80px;">
             </div>
-        </div>
 
-        <!-- Total de la Venta -->
-        <div class="d-flex align-items-center flex-wrap gap-2 justify-content-between">
-            <div class="d-flex align-items-center gap-1">
+            <!-- Total de la Venta -->
+            <div class="col-12 col-md-auto d-flex align-items-center gap-2 mb-2 mb-md-0">
                 <label for="totalVentaInput" class="form-label mb-0">Total de la Venta: Bs</label>
                 <input type="number" id="totalVentaInput" name="total_venta" class="form-control text-end"
                     style="max-width: 120px;" min="0" step="0.01" value="0.00">
             </div>
-            <div class="ms-auto">
-                <button class="btn btn-success mt-2 mt-md-0" id="finalizarVenta">Finalizar Venta</button>
+
+            <!-- Botón Finalizar Venta -->
+            <div class="col-12 col-md-auto ms-md-auto">
+                <button class="btn btn-success w-100 w-md-auto" id="finalizarVenta">Finalizar Venta</button>
             </div>
         </div>
 
@@ -359,7 +360,7 @@
                         value="${producto.subtotal.toFixed(2)}" 
                         min="0" 
                         onchange="actualizarSubtotal(${producto.id_producto}, this.value)" 
-                        style="max-width: 80px;">
+                        style="max-width: 125px;">
                 </td>
                 <td><button class="btn btn-danger btn-sm" onclick="quitarProducto(${producto.id_producto})">Quitar</button></td>
             </tr>`;

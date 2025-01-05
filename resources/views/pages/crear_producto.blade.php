@@ -75,9 +75,9 @@
                     <input type="date" name="fecha_vencimiento" id="fecha_vencimiento" class="form-control">
                 </div>
                 <div class="col-md-6">
-                    <label for="precio_compra" class="form-label">Precio de Compra</label>
-                    <input type="number" name="precio_compra" id="precio_compra" class="form-control" required
-                        min="0" step="0.01">
+                    <label for="precio_compra_actual" class="form-label">Precio de Compra</label>
+                    <input type="number" name="precio_compra_actual" id="precio_compra_actual" class="form-control"
+                        required min="0" step="0.01">
                 </div>
             </div>
 
@@ -185,11 +185,16 @@
                 }
 
                 const data = await response.json();
+
+                // Mostrar el código de barras en el front
                 document.getElementById('codigo_barra').value = data.barcode;
 
                 // Descargar el PDF automáticamente
+                const pdfBlob = new Blob([Uint8Array.from(atob(data.pdf_base64), c => c.charCodeAt(0))], {
+                    type: 'application/pdf',
+                });
                 const link = document.createElement('a');
-                link.href = data.pdf_url;
+                link.href = window.URL.createObjectURL(pdfBlob);
                 link.download = `${nombreProducto}-barcode.pdf`;
                 link.click();
 
@@ -221,11 +226,11 @@
             }, 5000);
         }
 
-        document.getElementById('precio_compra').addEventListener('input', calcularPrecioVenta);
+        document.getElementById('precio_compra_actual').addEventListener('input', calcularPrecioVenta);
         document.getElementById('porcentaje_utilidad').addEventListener('input', calcularPrecioVenta);
 
         function calcularPrecioVenta() {
-            const precioCompra = parseFloat(document.getElementById('precio_compra').value);
+            const precioCompra = parseFloat(document.getElementById('precio_compra_actual').value);
             const utilidad = parseFloat(document.getElementById('porcentaje_utilidad').value);
 
             if (!isNaN(precioCompra) && !isNaN(utilidad)) {

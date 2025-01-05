@@ -50,7 +50,8 @@
 <body>
     <h2>Inventario de Productos</h2>
     <div class="details">
-        <h4>Fecha: {{ $fecha }}</h4>
+        <h4>Fecha Inicio: {{ $fechaInicio }}</h4>
+        <h4>Fecha Fin: {{ $fechaFin }}</h4>
         <h4>Total valor: Bs {{ number_format($totalValor, 2) }}</h4>
     </div>
     <table>

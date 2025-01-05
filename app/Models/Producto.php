@@ -17,7 +17,7 @@ class Producto extends Model
         'unidad',
         'fecha_vencimiento',
         'porcentaje_utilidad',
-        'precio_compra',
+        'precio_compra_actual',
         'precio_venta_actual',
         'stock',
         'stock_minimo',
@@ -45,5 +45,17 @@ class Producto extends Model
     public function historialInventario()
     {
         return $this->hasMany(HistorialInventario::class, 'id_producto', 'id_producto');
+    }
+
+    public function historialPreciosCompra()
+    {
+        return $this->hasMany(HistorialCompra::class, 'id_producto', 'id_producto');
+    }
+
+    // Obtener el precio actual del producto
+    public function precioCompraActual()
+    {
+        return $this->hasOne(HistorialCompra::class, 'id_producto', 'id_producto')
+            ->whereNull('fecha_fin');
     }
 }

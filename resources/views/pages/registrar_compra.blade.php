@@ -358,7 +358,7 @@
             }
 
             producto.cantidad = 1; // Cantidad inicial
-            producto.subtotal = producto.precio_compra; // Subtotal inicial
+            producto.subtotal = producto.precio_compra_actual; // Subtotal inicial
             productosSeleccionados.push(producto);
             renderProductos();
         }
@@ -371,11 +371,11 @@
                 tbody.innerHTML += `
             <tr>
                 <td>${producto.nombre_producto}</td>
-                <td>Bs ${producto.precio_compra.toFixed(2)}</td>
+                <td>Bs ${producto.precio_compra_actual.toFixed(2)}</td>
                 <td>
                     <input type="number" class="form-control cantidad" value="${producto.cantidad}" min="1" onchange="actualizarCantidad(${producto.id_producto}, this.value)">
                 </td>
-                <td>Bs ${(producto.cantidad * producto.precio_compra).toFixed(2)}</td>
+                <td>Bs ${(producto.cantidad * producto.precio_compra_actual).toFixed(2)}</td>
                 <td><button class="btn btn-danger btn-sm" onclick="quitarProducto(${producto.id_producto})">Quitar</button></td>
             </tr>`;
             });
@@ -387,7 +387,7 @@
             const producto = productosSeleccionados.find(p => p.id_producto === id);
             if (producto) {
                 producto.cantidad = parseInt(cantidad);
-                producto.subtotal = producto.cantidad * producto.precio_compra;
+                producto.subtotal = producto.cantidad * producto.precio_compra_actual;
                 renderProductos();
             }
         }
