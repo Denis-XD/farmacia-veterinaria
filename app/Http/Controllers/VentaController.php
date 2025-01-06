@@ -327,7 +327,7 @@ class VentaController extends Controller
         $filtros['orden'] = $filtros['orden'] ?? 'desc';
 
         // Consulta base de las ventas con detalles y productos
-        $ventas = Venta::with(['detalles.producto.historialPrecios'])
+        $ventas = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
                 $query->whereDate('fecha_venta', $filtros['fecha']);
             })
@@ -354,7 +354,61 @@ class VentaController extends Controller
             ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc')
             ->paginate(10);
 
-        return view('pages.venta_reporte_utilidad', compact('ventas', 'filtros'));
+        $totalEfectivo = 0;
+        $totalCredito = 0;
+        $totalVentas = 0;
+        $totalCosto = 0;
+        $totalUtilidad = 0;
+
+        // Procesar cada venta
+        $ventas->getCollection()->transform(function ($venta) use (&$totalEfectivo, &$totalCredito,  &$totalVentas, &$totalCosto, &$totalUtilidad) {
+            $venta->detalles->transform(function ($detalle) use ($venta, &$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
+                // Obtener precio de venta y compra según fecha de la venta
+                $precioVenta = $detalle->producto->historialPrecios()
+                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
+                    ->where(function ($query) use ($venta) {
+                        $query->whereNull('fecha_fin')
+                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+                    })
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->value('precio_venta') ?? 0;
+
+                $precioCompra = $detalle->producto->historialPreciosCompra()
+                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
+                    ->where(function ($query) use ($venta) {
+                        $query->whereNull('fecha_fin')
+                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+                    })
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->value('precio_compra') ?? 0;
+
+                // Calcular valores
+                $detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
+                $detalle->subtotal_costo = $detalle->cantidad_venta * $precioCompra;
+                $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
+
+                // Ajustar efectivo y crédito según el campo "credito" de la venta
+                if ($venta->credito) {
+                    $detalle->efectivo = 0;
+                    $detalle->credito = $detalle->subtotal_venta;
+                    $totalCredito += $detalle->subtotal_venta;
+                } else {
+                    $detalle->efectivo = $detalle->subtotal_venta;
+                    $detalle->credito = 0;
+                    $totalEfectivo += $detalle->subtotal_venta;
+                }
+
+                $totalVentas += $detalle->subtotal_venta;
+                $totalCosto += $detalle->subtotal_costo;
+                $totalUtilidad += $detalle->subtotal_utilidad;
+
+                return $detalle;
+            });
+
+            return $venta;
+        });
+
+        return view('pages.venta_reporte_utilidad', compact('ventas', 'filtros', 'totalEfectivo', 'totalCredito', 'totalVentas', 'totalCosto', 'totalUtilidad'));
     }
 
     public function descargarReportePdf(Request $request)
@@ -391,8 +445,14 @@ class VentaController extends Controller
             $filtros['orden'] = 'Más reciente';
         }
 
+        $totalEfectivo = 0;
+        $totalCredito = 0;
+        $totalVentas = 0;
+        $totalCosto = 0;
+        $totalUtilidad = 0;
+
         // Consulta base de las ventas con detalles y productos
-        $ventas = Venta::with(['detalles.producto.historialPrecios'])
+        $ventas = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
                 $query->whereDate('fecha_venta', $filtros['fecha']);
             })
@@ -416,13 +476,58 @@ class VentaController extends Controller
             ->when($filtros['finalizada'] !== 'Todas', function ($query) use ($filtros) {
                 $query->where('finalizada', $filtros['finalizada'] === 'Sí' ? 1 : 0);
             })
-            ->orderBy('fecha_venta', $filtros['orden'] === 'Más antigua' ? 'asc' : 'desc')
+            ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc')
             ->get();
 
-        // Generar PDF
-        $pdf = Pdf::loadView('pdf.venta_reporte_utilidad_pdf', compact('ventas', 'filtros'));
+        $ventas->transform(function ($venta) use (&$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
+            $venta->detalles->transform(function ($detalle) use ($venta, &$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
+                // Obtener precio de venta y compra según fecha de la venta
+                $precioVenta = $detalle->producto->historialPrecios()
+                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
+                    ->where(function ($query) use ($venta) {
+                        $query->whereNull('fecha_fin')
+                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+                    })
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->value('precio_venta') ?? 0;
 
-        // Descargar el PDF
+                $precioCompra = $detalle->producto->historialPreciosCompra()
+                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
+                    ->where(function ($query) use ($venta) {
+                        $query->whereNull('fecha_fin')
+                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+                    })
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->value('precio_compra') ?? 0;
+
+                // Calcular valores
+                $detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
+                $detalle->subtotal_costo = $detalle->cantidad_venta * $precioCompra;
+                $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
+
+                if ($venta->credito) {
+                    $detalle->efectivo = 0;
+                    $detalle->credito = $detalle->subtotal_venta;
+                    $totalCredito += $detalle->subtotal_venta;
+                } else {
+                    $detalle->efectivo = $detalle->subtotal_venta;
+                    $detalle->credito = 0;
+                    $totalEfectivo += $detalle->subtotal_venta;
+                }
+
+                $totalVentas += $detalle->subtotal_venta;
+                $totalCosto += $detalle->subtotal_costo;
+                $totalUtilidad += $detalle->subtotal_utilidad;
+
+                return $detalle;
+            });
+
+            return $venta;
+        });
+
+        // Generar PDF
+        $pdf = Pdf::loadView('pdf.venta_reporte_utilidad_pdf', compact('ventas', 'filtros', 'totalEfectivo', 'totalCredito', 'totalVentas', 'totalCosto', 'totalUtilidad'));
+
         return $pdf->download('reporte_utilidad.pdf');
     }
 

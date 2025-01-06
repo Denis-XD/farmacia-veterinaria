@@ -453,4 +453,30 @@ class ProductoController extends Controller
         $pdf = PDF::loadView('pdf.inventario_pdf', compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor'));
         return $pdf->download('inventario_' . $fechaInicio . '_al_' . $fechaFin . '.pdf');
     }
+
+    public function generarCodigosBarraPdf()
+    {
+        // Obtener productos que no tienen código de barra
+        $productosSinCodigo = Producto::whereNull('codigo_barra')->get();
+
+        // Generar códigos de barra para esos productos
+        foreach ($productosSinCodigo as $producto) {
+            do {
+                $barcode = mt_rand(100000000000, 999999999999); // Genera un número de 12 dígitos
+            } while (Producto::where('codigo_barra', $barcode)->exists());
+
+            $producto->update(['codigo_barra' => $barcode]);
+        }
+
+        // Volver a obtener los productos actualizados con su código de barra
+        $productosActualizados = Producto::whereIn('id_producto', $productosSinCodigo->pluck('id_producto'))->get();
+
+        // Generar el PDF con los códigos de barra
+        $pdf = Pdf::loadView('pdf.barcode_productos_pdf', compact('productosActualizados'));
+
+        // Descargar el PDF con la fecha actual en el nombre
+        $nombrePdf = 'codigos_barra_productos_' . now()->format('Y_m_d') . '.pdf';
+
+        return $pdf->download($nombrePdf);
+    }
 }

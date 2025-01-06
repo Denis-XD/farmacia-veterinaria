@@ -43,12 +43,12 @@
         <!-- Totales -->
         <div class="mb-3">
             <h5>Total de Ventas: <span class="text-success">Bs
-                    {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum('subtotal_venta')), 2) }}</span></h5>
+                    {{ number_format($totalVentas, 2) }}</span></h5>
             <h5>Total Costo de Ventas: <span class="text-danger">Bs
-                    {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum(fn($detalle) => $detalle->producto->precio_compra * $detalle->cantidad_venta)), 2) }}</span>
+                    {{ number_format($totalCosto, 2) }}</span></h5>
             </h5>
             <h5>Total de Utilidad Bruta: <span class="text-primary">Bs
-                    {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum(fn($detalle) => ($detalle->producto->precio_venta_actual - $detalle->producto->precio_compra) * $detalle->cantidad_venta)), 2) }}</span>
+                    {{ number_format($totalUtilidad, 2) }}</span></h5>
             </h5>
         </div>
         <div class="d-flex justify-content-end mb-3">
@@ -81,16 +81,11 @@
                                 <td>{{ $detalle->cantidad_venta }}</td>
                                 <td>{{ $detalle->producto->unidad }}</td>
                                 <td>{{ $detalle->producto->nombre_producto }}</td>
-                                <td>{{ $venta->credito ? 'No' : 'Sí' }}</td>
-                                <td>{{ $venta->credito ? 'Sí' : 'No' }}</td>
-                                <td>Bs
-                                    {{ number_format($detalle->producto->precio_venta_actual * $detalle->cantidad_venta, 2) }}
-                                </td>
-                                <td>Bs {{ number_format($detalle->producto->precio_compra * $detalle->cantidad_venta, 2) }}
-                                </td>
-                                <td>Bs
-                                    {{ number_format(($detalle->producto->precio_venta_actual - $detalle->producto->precio_compra) * $detalle->cantidad_venta, 2) }}
-                                </td>
+                                <td>Bs {{ number_format($detalle->efectivo, 2) }}</td>
+                                <td>Bs {{ number_format($detalle->credito, 2) }}</td>
+                                <td>Bs {{ number_format($detalle->subtotal_venta, 2) }}</td>
+                                <td>Bs {{ number_format($detalle->subtotal_costo, 2) }}</td>
+                                <td>Bs {{ number_format($detalle->subtotal_utilidad, 2) }}</td>
                             </tr>
                         @endforeach
                     @endforeach

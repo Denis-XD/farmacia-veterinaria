@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/productos/kardex/{id}', [ProductoController::class, 'kardex'])->name('productos.kardex');
     Route::get('/productos/inventario', [ProductoController::class, 'inventario'])->name('productos.inventario');
     Route::get('/productos/inventario/pdf', [ProductoController::class, 'descargarInventarioPdf'])->name('productos.descargarInventarioPdf');
+    Route::get('/productos/generar-barcode-productos/pdf', [ProductoController::class, 'generarCodigosBarraPdf'])->name('productos.generarCodigosBarraPdf');
 
     Route::resource('productos', ProductoController::class)->names([
         'index' => 'productos.index',

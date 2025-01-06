@@ -41,7 +41,13 @@
         @endif
     </div>
 
-    <div class="d-flex justify-content-center mb-3 mt-n5 mt-5">
+    <div class="d-flex justify-content-end my-3">
+        <a href="{{ route('productos.generarCodigosBarraPdf') }}" class="btn btn-danger ms-auto">
+            Generar Codigos
+        </a>
+    </div>
+
+    <div class="d-flex justify-content-center mb-3 mt-n5">
         <form action="{{ route('productos.index') }}" method="GET" class="d-flex justify-content-center">
             <div class="input-group rounded d-flex justify-content-center">
                 <label for="search-input" class="visually-hidden">Buscar</label>

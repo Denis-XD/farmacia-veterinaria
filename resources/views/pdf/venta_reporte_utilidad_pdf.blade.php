@@ -55,29 +55,27 @@
                     <strong>Fecha específica:</strong> {{ !empty($filtros['fecha']) ? $filtros['fecha'] : '' }}
                 </td>
                 <td>
-                    <strong>Fecha desde:</strong> {{ !empty($filtros['fecha_desde']) ? $filtros['fecha_desde'] : '' }}
+                    <strong>Socio:</strong> {{ !empty($filtros['socio']) ? $filtros['socio'] : '' }}
+
                 </td>
             </tr>
             <tr>
                 <td>
-                    <strong>Fecha hasta:</strong> {{ !empty($filtros['fecha_hasta']) ? $filtros['fecha_hasta'] : '' }}
+                    <strong>Fecha desde:</strong> {{ !empty($filtros['fecha_desde']) ? $filtros['fecha_desde'] : '' }}
                 </td>
                 <td>
-                    <strong>Socio:</strong> {{ !empty($filtros['socio']) ? $filtros['socio'] : '' }}
+                    <strong>Fecha hasta:</strong> {{ !empty($filtros['fecha_hasta']) ? $filtros['fecha_hasta'] : '' }}
                 </td>
                 <td></td>
             </tr>
         </table>
     </div>
     <div class="totales">
-        <p>Total de Ventas: <strong>Bs
-                {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum('subtotal_venta')), 2) }}</strong></p>
-        <p>Total Costo de Ventas: <strong>Bs
-                {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum(fn($detalle) => $detalle->producto->precio_compra * $detalle->cantidad_venta)), 2) }}</strong>
-        </p>
-        <p>Total de Utilidad Bruta: <strong>Bs
-                {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum(fn($detalle) => ($detalle->producto->precio_venta_actual - $detalle->producto->precio_compra) * $detalle->cantidad_venta)), 2) }}</strong>
-        </p>
+        <p>Total Efectivo: <strong>Bs {{ number_format($totalEfectivo, 2) }}</strong></p>
+        <p>Total Crédito: <strong>Bs {{ number_format($totalCredito, 2) }}</strong></p>
+        <p>Total Ventas: <strong>Bs {{ number_format($totalVentas, 2) }}</strong></p>
+        <p>Total Costo de Ventas: <strong>Bs {{ number_format($totalCosto, 2) }}</strong></p>
+        <p>Total Utilidad Bruta: <strong>Bs {{ number_format($totalUtilidad, 2) }}</strong></p>
     </div>
     <table>
         <thead>
@@ -101,34 +99,26 @@
                         <td>{{ $detalle->cantidad_venta }}</td>
                         <td>{{ $detalle->producto->unidad }}</td>
                         <td>{{ $detalle->producto->nombre_producto }}</td>
-                        <td>{{ $venta->credito ? 'No' : 'Sí' }}</td>
-                        <td>{{ $venta->credito ? 'Sí' : 'No' }}</td>
-                        <td>Bs
-                            {{ number_format($detalle->producto->precio_venta_actual * $detalle->cantidad_venta, 2) }}
-                        </td>
-                        <td>Bs {{ number_format($detalle->producto->precio_compra * $detalle->cantidad_venta, 2) }}
-                        </td>
-                        <td>Bs
-                            {{ number_format(($detalle->producto->precio_venta_actual - $detalle->producto->precio_compra) * $detalle->cantidad_venta, 2) }}
-                        </td>
+                        <td>Bs {{ number_format($detalle->efectivo, 2) }}</td>
+                        <td>Bs {{ number_format($detalle->credito, 2) }}</td>
+                        <td>Bs {{ number_format($detalle->subtotal_venta, 2) }}</td>
+                        <td>Bs {{ number_format($detalle->subtotal_costo, 2) }}</td>
+                        <td>Bs {{ number_format($detalle->subtotal_utilidad, 2) }}</td>
                     </tr>
                 @endforeach
             @endforeach
         </tbody>
         <tfoot>
             <tr>
-                <th colspan="6">TOTALES</th>
-                <th>Bs {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum('subtotal_venta')), 2) }}</th>
-                <th>Bs
-                    {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum(fn($detalle) => $detalle->producto->precio_compra * $detalle->cantidad_venta)), 2) }}
-                </th>
-                <th>Bs
-                    {{ number_format($ventas->sum(fn($venta) => $venta->detalles->sum(fn($detalle) => ($detalle->producto->precio_venta_actual - $detalle->producto->precio_compra) * $detalle->cantidad_venta)), 2) }}
-                </th>
+                <th colspan="4">TOTALES</th>
+                <th>Bs {{ number_format($totalEfectivo, 2) }}</th>
+                <th>Bs {{ number_format($totalCredito, 2) }}</th>
+                <th>Bs {{ number_format($totalVentas, 2) }}</th>
+                <th>Bs {{ number_format($totalCosto, 2) }}</th>
+                <th>Bs {{ number_format($totalUtilidad, 2) }}</th>
             </tr>
         </tfoot>
     </table>
-
 </body>
 
 </html>
