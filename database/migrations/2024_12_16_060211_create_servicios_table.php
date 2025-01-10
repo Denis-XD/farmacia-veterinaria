@@ -18,9 +18,9 @@ class CreateServiciosTable extends Migration
             $table->unsignedBigInteger('id_venta');
             $table->string('tratamiento', 200);
             $table->dateTime('fecha_servicio');
-            $table->double('costo_servicio', 10, 2);
-            $table->double('costo_combustible', 10, 2);
-            $table->double('total_servicio', 10, 2);
+            $table->decimal('costo_servicio', 10, 2);
+            $table->decimal('costo_combustible', 10, 2);
+            $table->decimal('total_servicio', 10, 2);
             $table->timestamps();
 
             // Llave foránea

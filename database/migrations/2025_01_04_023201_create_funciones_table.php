@@ -21,18 +21,20 @@ class CreateFuncionesTable extends Migration
         END;
         SQL);
 
-        // Trigger para verificar stock mínimo
+        // Crear trigger para verificar stock mínimo
         DB::unprepared(<<<SQL
         CREATE TRIGGER trg_verificar_stock_minimo
         AFTER UPDATE ON producto
         FOR EACH ROW
         BEGIN
             IF NEW.stock < NEW.stock_minimo THEN
-                -- Verifica si ya existe un registro con el mismo mensaje
                 IF NOT EXISTS (
                     SELECT 1
                     FROM log_errores
                     WHERE mensaje = CONCAT('Stock mínimo alcanzado para el producto: ', NEW.nombre_producto)
+                      AND NEW.id_producto = (
+                          SELECT id_producto FROM producto WHERE nombre_producto = NEW.nombre_producto LIMIT 1
+                      )
                 ) THEN
                     INSERT INTO log_errores (mensaje)
                     VALUES (CONCAT('Stock mínimo alcanzado para el producto: ', NEW.nombre_producto));
@@ -41,21 +43,20 @@ class CreateFuncionesTable extends Migration
         END;
         SQL);
 
-        // Trigger para eliminar registros de log_errores cuando el stock es mayor o igual al mínimo
+        // Crear trigger para eliminar registros cuando el stock se normaliza
         DB::unprepared(<<<SQL
         CREATE TRIGGER trg_eliminar_stock_minimo
         AFTER UPDATE ON producto
         FOR EACH ROW
         BEGIN
-            -- Verificar si el stock ya no está por debajo del stock mínimo
             IF NEW.stock >= NEW.stock_minimo THEN
                 DELETE FROM log_errores
-                WHERE mensaje LIKE CONCAT('%', NEW.nombre_producto, '%');
+                WHERE mensaje = CONCAT('Stock mínimo alcanzado para el producto: ', NEW.nombre_producto);
             END IF;
         END;
         SQL);
 
-        // Vista para alertas de stock
+        // Crear vista para alertas de stock
         DB::unprepared(<<<SQL
         CREATE VIEW VistaAlertasStock AS
         SELECT 
@@ -67,7 +68,7 @@ class CreateFuncionesTable extends Migration
           L.mensaje,
           L.fecha
         FROM producto P
-        JOIN log_errores L ON L.mensaje LIKE CONCAT('%', P.nombre_producto, '%');
+        JOIN log_errores L ON L.mensaje = CONCAT('Stock mínimo alcanzado para el producto: ', P.nombre_producto);
         SQL);
     }
 

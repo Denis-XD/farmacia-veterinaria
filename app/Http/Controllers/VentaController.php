@@ -290,7 +290,46 @@ class VentaController extends Controller
      */
     public function destroy($id)
     {
-        //
+        abort_if(Gate::denies('venta_eliminar'), 403);
+
+        DB::beginTransaction(); // Iniciar la transacción
+
+        try {
+            // Obtener la venta con sus detalles y productos asociados
+            $venta = Venta::with('detalles.producto')->findOrFail($id);
+
+            foreach ($venta->detalles as $detalle) {
+                $producto = $detalle->producto;
+
+                if ($producto) {
+                    // Incrementar el stock del producto basado en la cantidad vendida
+                    $producto->increment('stock', $detalle->cantidad_venta);
+
+                    // Eliminar registros de historial de inventario asociados a esta transacción
+                    HistorialInventario::where('id_producto', $producto->id_producto)
+                        ->where('id_transaccion', $venta->id_venta)
+                        ->where('tipo_transaccion', 'Venta')
+                        ->delete();
+                }
+            }
+
+            // Eliminar los detalles de la venta
+            $venta->detalles()->delete();
+
+            // Eliminar los pagos asociados a la venta
+            $venta->pagos()->delete();
+
+            // Eliminar la venta
+            $venta->delete();
+
+            DB::commit(); // Confirmar la transacción
+
+            return redirect()->route('ventas.index')->with('success', 'Venta eliminada correctamente. El stock de los productos ha sido ajustado y el historial de inventario actualizado.');
+        } catch (\Exception $e) {
+            DB::rollBack(); // Revertir la transacción en caso de error
+
+            return redirect()->route('ventas.index')->with('error', 'Hubo un problema al eliminar la venta: ' . $e->getMessage());
+        }
     }
 
     public function registrar()

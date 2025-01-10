@@ -147,7 +147,7 @@ class SocioController extends Controller
      */
     public function destroy($id)
     {
-        abort_if(Gate::denies('materia_eliminar'), 403);
+        abort_if(Gate::denies('socio_eliminar'), 403);
         $socio = Socio::findOrFail($id);
         $socio->delete();
 

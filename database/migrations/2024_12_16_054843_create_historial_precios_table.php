@@ -14,13 +14,13 @@ class CreateHistorialPreciosTable extends Migration
     public function up()
     {
         Schema::create('historial_precio', function (Blueprint $table) {
-            $table->bigIncrements('id_historial'); 
-            $table->unsignedBigInteger('id_producto'); 
-            $table->double('precio_venta', 8, 2); 
-            $table->dateTime('fecha_inicio', 3); 
-            $table->dateTime('fecha_fin', 3)->nullable(); 
-            $table->timestamps(); 
-            
+            $table->bigIncrements('id_historial');
+            $table->unsignedBigInteger('id_producto');
+            $table->decimal('precio_venta', 8, 2);
+            $table->dateTime('fecha_inicio', 3);
+            $table->dateTime('fecha_fin', 3)->nullable();
+            $table->timestamps();
+
             // Llave foránea
             $table->foreign('id_producto')
                 ->references('id_producto')

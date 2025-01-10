@@ -179,7 +179,7 @@ class CompraController extends Controller
      */
     public function edit($id)
     {
-        //
+        abort_if(Gate::denies('compra_actualizar'), 403);
     }
 
     /**
@@ -191,7 +191,7 @@ class CompraController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        abort_if(Gate::denies('compra_actualizar'), 403);
     }
 
     /**
@@ -202,7 +202,44 @@ class CompraController extends Controller
      */
     public function destroy($id)
     {
-        //
+        abort_if(Gate::denies('compra_eliminar'), 403);
+
+        DB::beginTransaction(); // Iniciar la transacción
+
+        try {
+            // Obtener la compra con sus detalles y productos asociados
+            $compra = Compra::with('detalles.producto')->findOrFail($id);
+
+            foreach ($compra->detalles as $detalle) {
+                $producto = $detalle->producto;
+
+                if ($producto) {
+                    // Reducir el stock del producto basado en la cantidad comprada
+                    $nuevoStock = max(0, $producto->stock - $detalle->cantidad_compra);
+                    $producto->update(['stock' => $nuevoStock]);
+
+                    // Eliminar registros de historial de inventario asociados a esta transacción
+                    HistorialInventario::where('id_producto', $producto->id_producto)
+                        ->where('id_transaccion', $compra->id_compra)
+                        ->where('tipo_transaccion', 'Compra')
+                        ->delete();
+                }
+            }
+
+            // Eliminar los detalles de la compra
+            $compra->detalles()->delete();
+
+            // Eliminar la compra
+            $compra->delete();
+
+            DB::commit(); // Confirmar la transacción
+
+            return redirect()->route('compras.index')->with('success', 'Compra eliminada correctamente. El stock de los productos ha sido ajustado y el historial de inventario actualizado.');
+        } catch (\Exception $e) {
+            DB::rollBack(); // Revertir la transacción en caso de error
+
+            return redirect()->route('compras.index')->with('error', 'Hubo un problema al eliminar la compra: ' . $e->getMessage());
+        }
     }
 
     public function registrar()

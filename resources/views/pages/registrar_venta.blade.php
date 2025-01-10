@@ -45,7 +45,6 @@
                 <input type="text" class="form-control" value="{{ $usuario->nombre }}" disabled>
             </div>
         </div>
-
         <!-- Buscador de productos -->
         <div class="card mb-4">
             <div class="card-header">Buscar Productos</div>
@@ -53,7 +52,6 @@
                 <div class="input-group mb-3">
                     <input type="text" id="buscarProducto" class="form-control"
                         placeholder="Buscar por ID, Código de Barra o Nombre">
-                    <button class="btn btn-primary" id="btnBuscarProducto">Buscar</button>
                 </div>
                 <div id="resultadoProducto" class="table-responsive">
                     <table class="table table-bordered table-hover d-none" id="tablaProductos">
@@ -71,6 +69,7 @@
                 </div>
             </div>
         </div>
+
 
         <!-- Productos seleccionados -->
         <div id="productosSeleccionados" class="mb-4">
@@ -250,283 +249,283 @@
             }
         }
     </style>
-
     <script>
         let productosSeleccionados = [];
         const productos = @json($productos);
 
         document.addEventListener('DOMContentLoaded', () => {
+            const buscarProductoInput = document.getElementById('buscarProducto');
             const totalVentaInput = document.getElementById('totalVentaInput');
             const montoPagadoInput = document.getElementById('monto_pagado');
             const saldoPendienteInput = document.getElementById('saldo_pendiente');
             const porcentajeDescuentoInput = document.getElementById('porcentaje_descuento');
-
-            // Actualizar saldo pendiente y total al cambiar el porcentaje de descuento
-            porcentajeDescuentoInput.addEventListener('input', actualizarTotal);
-
-            totalVentaInput.addEventListener('input', () => {
-                const total = parseFloat(totalVentaInput.value) || 0;
-                const pagado = parseFloat(montoPagadoInput.value) || 0;
-                saldoPendienteInput.value = (total - pagado).toFixed(2);
-            });
-
-            montoPagadoInput.addEventListener('input', () => {
-                const total = parseFloat(totalVentaInput.value) || 0;
-                const pagado = parseFloat(montoPagadoInput.value) || 0;
-                saldoPendienteInput.value = (total - pagado).toFixed(2);
-            });
-        });
-
-        document.getElementById('btnBuscarProducto').addEventListener('click', () => {
-            const buscar = document.getElementById('buscarProducto').value.toLowerCase();
-            const resultados = productos.filter(producto =>
-                producto.id_producto.toString().includes(buscar) ||
-                (producto.codigo_barra && producto.codigo_barra.includes(buscar)) ||
-                producto.nombre_producto.toLowerCase().includes(buscar)
-            );
-
-            const tbody = document.querySelector('#tablaProductos tbody');
             const tabla = document.getElementById('tablaProductos');
-            tbody.innerHTML = '';
+            const tbody = tabla.querySelector('tbody');
 
-            if (resultados.length > 0) {
-                tabla.classList.remove('d-none');
-                resultados.forEach(producto => {
-                    tbody.innerHTML += `
-                <tr>
-                    <td>${producto.id_producto}</td>
-                    <td>${producto.codigo_barra || 'N/A'}</td>
-                    <td>${producto.nombre_producto}</td>
-                    <td>${producto.stock}</td>
-                    <td>
-                        <button class="btn btn-success btn-sm btn-choose-producto" data-id="${producto.id_producto}">Añadir</button>
-                    </td>
-                </tr>`;
-                });
-            } else {
-                tabla.classList.add('d-none');
-                showNotification('No se encontraron productos.', 'danger');
-            }
-        });
+            // Búsqueda dinámica mientras se escribe
+            buscarProductoInput.addEventListener('input', () => {
+                const buscar = buscarProductoInput.value.toLowerCase().trim();
 
-        document.addEventListener('click', function(event) {
-            if (event.target.classList.contains('btn-choose-producto')) {
-                const idProducto = parseInt(event.target.getAttribute('data-id'));
-                const producto = productos.find(p => p.id_producto === idProducto);
-
-                if (!producto) {
-                    showNotification('Producto no encontrado.', 'danger');
+                if (!buscar) {
+                    tabla.classList.add('d-none');
+                    tbody.innerHTML = '';
                     return;
                 }
 
-                añadirProducto(producto);
-            }
-        });
+                const resultados = productos.filter(producto =>
+                    producto.id_producto.toString().includes(buscar) ||
+                    (producto.codigo_barra && producto.codigo_barra.toLowerCase().includes(buscar)) ||
+                    producto.nombre_producto.toLowerCase().includes(buscar)
+                );
 
-        function añadirProducto(producto) {
-            if (productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
-                showNotification('El producto ya está añadido.', 'danger');
-                return;
-            }
-
-            if (producto.stock <= 0) {
-                showNotification('El producto no tiene stock disponible.', 'danger');
-                return;
-            }
-
-            producto.cantidad = 1; // Cantidad inicial
-            producto.subtotal = producto.cantidad * producto.precio_venta_actual;
-            productosSeleccionados.push(producto);
-            renderProductos();
-        }
-
-        function renderProductos() {
-            const tbody = document.getElementById('listaProductos');
-            tbody.innerHTML = '';
-
-            productosSeleccionados.forEach(producto => {
-                tbody.innerHTML += `
-            <tr>
-                <td>${producto.nombre_producto}</td>
-                <td>Bs ${producto.precio_venta_actual.toFixed(2)}</td>
-                <td>
-                    <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
-                        min="1" max="${producto.stock}" 
-                        onchange="actualizarCantidad(${producto.id_producto}, this.value)">
-                </td>
-                <td class="d-flex align-items-center gap-1 flex-wrap">
-                    <span>Bs</span>
-                    <input type="number" class="form-control subtotal" 
-                        value="${producto.subtotal.toFixed(2)}" 
-                        min="0" 
-                        onchange="actualizarSubtotal(${producto.id_producto}, this.value)" 
-                        style="max-width: 125px;">
-                </td>
-                <td><button class="btn btn-danger btn-sm" onclick="quitarProducto(${producto.id_producto})">Quitar</button></td>
-            </tr>`;
+                tbody.innerHTML = '';
+                if (resultados.length > 0) {
+                    tabla.classList.remove('d-none');
+                    resultados.forEach(producto => {
+                        tbody.innerHTML += `
+                        <tr>
+                            <td>${producto.id_producto}</td>
+                            <td>${producto.codigo_barra || 'N/A'}</td>
+                            <td>${producto.nombre_producto}</td>
+                            <td>${producto.stock}</td>
+                            <td>
+                                <button class="btn btn-success btn-sm btn-choose-producto" 
+                                    data-id="${producto.id_producto}">Añadir</button>
+                            </td>
+                        </tr>`;
+                    });
+                } else {
+                    tabla.classList.add('d-none');
+                    showNotification('No se encontraron productos.', 'danger');
+                }
             });
 
-            actualizarTotal();
-        }
+            // Manejar clic para añadir productos
+            document.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-choose-producto')) {
+                    const idProducto = parseInt(event.target.getAttribute('data-id'));
+                    const producto = productos.find(p => p.id_producto === idProducto);
 
-        function actualizarSubtotal(idProducto, nuevoSubtotal) {
-            const producto = productosSeleccionados.find(p => p.id_producto === idProducto);
+                    if (!producto) {
+                        showNotification('Producto no encontrado.', 'danger');
+                        return;
+                    }
 
-            if (!producto) {
-                return;
-            }
+                    añadirProducto(producto);
+                }
+            });
 
-            const subtotalNumerico = parseFloat(nuevoSubtotal);
-            if (isNaN(subtotalNumerico) || subtotalNumerico < 0) {
-                showNotification('El subtotal debe ser un número válido mayor o igual a cero.', 'danger');
-                return;
-            }
+            function añadirProducto(producto) {
+                if (productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
+                    showNotification('El producto ya está añadido.', 'danger');
+                    return;
+                }
 
-            producto.subtotal = subtotalNumerico;
-            actualizarTotal();
-        }
+                if (producto.stock <= 0) {
+                    showNotification('El producto no tiene stock disponible.', 'danger');
+                    return;
+                }
 
-        function actualizarCantidad(idProducto, cantidad) {
-            const producto = productosSeleccionados.find(p => p.id_producto === idProducto);
-
-            if (!producto) {
-                return;
-            }
-
-            const cantidadNumerica = parseInt(cantidad, 10);
-            if (cantidadNumerica < 1 || cantidadNumerica > producto.stock || isNaN(cantidadNumerica)) {
-                showNotification('La cantidad debe estar entre 1 y el stock disponible.', 'danger');
+                producto.cantidad = 1;
+                producto.subtotal = producto.cantidad * producto.precio_venta_actual;
+                productosSeleccionados.push(producto);
                 renderProductos();
-                return;
             }
 
-            producto.cantidad = cantidadNumerica;
-            producto.subtotal = producto.cantidad * producto.precio_venta_actual;
-            renderProductos();
-        }
+            function renderProductos() {
+                const tbody = document.getElementById('listaProductos');
+                tbody.innerHTML = '';
 
-        function quitarProducto(idProducto) {
-            productosSeleccionados = productosSeleccionados.filter(p => p.id_producto !== idProducto);
-            renderProductos();
-        }
-
-        function actualizarTotal() {
-            const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
-            const porcentajeDescuento = parseFloat(document.getElementById('porcentaje_descuento').value) || 0;
-
-            if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
-                showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
-                return;
-            }
-
-            const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
-            const totalConDescuento = totalSinDescuento - descuento;
-
-            document.getElementById('totalVentaInput').value = totalConDescuento.toFixed(2);
-            document.getElementById('monto_pagado').dispatchEvent(new Event('input'));
-        }
-
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerText = message;
-
-            document.body.appendChild(notification);
-
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-
-            setTimeout(() => {
-                notification.classList.remove('show');
-                notification.addEventListener('transitionend', () => notification.remove());
-            }, 3000);
-        }
-
-        document.getElementById('porcentaje_descuento').addEventListener('input', actualizarTotal);
-
-        function actualizarTotal() {
-            const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
-            const porcentajeDescuento = parseFloat(document.getElementById('porcentaje_descuento').value) || 0;
-
-            if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
-                showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
-                return;
-            }
-
-            const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
-            const totalConDescuento = totalSinDescuento - descuento;
-
-            document.getElementById('totalVentaInput').value = totalConDescuento.toFixed(2);
-            document.getElementById('monto_pagado').dispatchEvent(new Event(
-                'input')); // Forzar actualización del saldo pendiente
-        }
-
-        document.getElementById('finalizarVenta').addEventListener('click', function() {
-            const modal = new bootstrap.Modal(document.getElementById('confirmarVentaModal'));
-            modal.show();
-        });
-
-        document.getElementById('confirmarVenta').addEventListener('click', async function() {
-            const modalElement = document.getElementById('confirmarVentaModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalElement);
-
-            if (modalInstance) {
-                modalInstance.hide(); // Oculta el modal
-            }
-
-            if (productosSeleccionados.length === 0) {
-                showNotification('Debe seleccionar al menos un producto.', 'danger');
-                return;
-            }
-
-            const data = {
-                id_socio: document.getElementById('id_socio').value || null,
-                total_venta: parseFloat(document.getElementById('totalVentaInput').value) || 0,
-                monto_pagado: parseFloat(document.getElementById('monto_pagado').value) || 0,
-                saldo_pendiente: parseFloat(document.getElementById('saldo_pendiente').value) || 0,
-                descripcion: document.getElementById('descripcion').value || null,
-                credito: parseInt(document.getElementById('credito').value) || 0,
-                servicio: parseInt(document.getElementById('servicio').value) || 0,
-                finalizada: parseInt(document.getElementById('finalizada').value) || 0,
-                productos: productosSeleccionados.map(producto => ({
-                    id: producto.id_producto,
-                    cantidad: producto.cantidad,
-                    subtotal: producto.subtotal
-                }))
-            };
-
-            try {
-                // Usa `await` aquí para esperar la respuesta
-                const response = await fetch('/ventas', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                            'content'),
-                    },
-                    body: JSON.stringify(data),
+                productosSeleccionados.forEach((producto, index) => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td>${producto.nombre_producto}</td>
+                    <td>Bs ${producto.precio_venta_actual.toFixed(2)}</td>
+                    <td>
+                        <input type="number" class="form-control cantidad" value="${producto.cantidad.toFixed(2)}" 
+                            step="0.01" 
+                            data-index="${index}" onfocus="this.select()">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control subtotal" value="${producto.subtotal.toFixed(2)}"
+                            step="0.01" data-index="${index}">
+                    </td>
+                    <td><button class="btn btn-danger btn-sm btn-quitar-producto" data-index="${index}">Quitar</button></td>
+                </tr>`;
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text(); // Leer la respuesta como texto
-                    throw new Error(`Error del servidor: ${errorText}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification(result.message, 'success');
-                    setTimeout(() => {
-                        window.location.href = result.redirect;
-                    }, 3000);
-                } else {
-                    showNotification(result.message || 'Error al registrar la venta.', 'danger');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification('Hubo un error al registrar la venta.', 'danger');
+                actualizarTotal();
             }
+
+            // Validar y actualizar cantidad en tiempo real
+            document.addEventListener('input', (event) => {
+                if (event.target.classList.contains('cantidad')) {
+                    const index = event.target.getAttribute('data-index');
+                    const cantidadInput = event.target;
+                    const cantidad = parseFloat(cantidadInput.value);
+                    const producto = productosSeleccionados[index];
+
+                    if (isNaN(cantidad) || cantidad < 1 || cantidad > producto.stock) {
+                        cantidadInput.classList.add('is-invalid');
+                    } else {
+                        cantidadInput.classList.remove('is-invalid');
+                        producto.cantidad = cantidad;
+                        producto.subtotal = producto.cantidad * producto.precio_venta_actual;
+                        actualizarSubtotal(index, producto.subtotal);
+                        actualizarTotal();
+                    }
+                }
+
+                if (event.target.classList.contains('subtotal')) {
+                    const index = event.target.getAttribute('data-index');
+                    const subtotalInput = event.target;
+                    const subtotal = parseFloat(subtotalInput.value);
+                    const producto = productosSeleccionados[index];
+
+                    if (isNaN(subtotal) || subtotal < 0) {
+                        subtotalInput.classList.add('is-invalid');
+                    } else {
+                        subtotalInput.classList.remove('is-invalid');
+                        producto.subtotal = subtotal;
+                        actualizarTotal(); // Mantiene la cantidad fija
+                    }
+                }
+
+                // Validar y aplicar porcentaje de descuento
+                if (event.target.id === 'porcentaje_descuento') {
+                    const porcentajeDescuento = parseFloat(porcentajeDescuentoInput.value);
+                    if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento >
+                        100) {
+                        porcentajeDescuentoInput.classList.add('is-invalid');
+
+                    } else {
+                        porcentajeDescuentoInput.classList.remove('is-invalid');
+                        actualizarTotal();
+                    }
+                }
+            });
+
+            // Actualizar "Saldo Pendiente" en tiempo real cuando cambia "Total de la Venta"
+            totalVentaInput.addEventListener('input', () => {
+                const total = parseFloat(totalVentaInput.value) || 0;
+                const montoPagado = parseFloat(montoPagadoInput.value) || 0;
+                saldoPendienteInput.value = (total - montoPagado).toFixed(2);
+            });
+
+            // Actualizar "Saldo Pendiente" en tiempo real cuando cambia "Monto Pagado"
+            montoPagadoInput.addEventListener('input', () => {
+                const total = parseFloat(totalVentaInput.value) || 0;
+                const montoPagado = parseFloat(montoPagadoInput.value) || 0;
+                saldoPendienteInput.value = (total - montoPagado).toFixed(2);
+            });
+
+            // Quitar producto
+            document.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-quitar-producto')) {
+                    const index = event.target.getAttribute('data-index');
+                    productosSeleccionados.splice(index, 1);
+                    renderProductos();
+                }
+            });
+
+            function actualizarTotal() {
+                const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal,
+                    0);
+                const porcentajeDescuento = parseFloat(porcentajeDescuentoInput.value) || 0;
+
+                if (porcentajeDescuento >= 0 && porcentajeDescuento <= 100) {
+                    const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
+                    const totalConDescuento = totalSinDescuento - descuento;
+
+                    totalVentaInput.value = totalConDescuento.toFixed(2);
+                    saldoPendienteInput.value = (totalConDescuento - parseFloat(montoPagadoInput.value || 0))
+                        .toFixed(2);
+                }
+            }
+
+            function actualizarSubtotal(index, subtotal) {
+                const subtotalInput = document.querySelector(`.subtotal[data-index="${index}"]`);
+                if (subtotalInput) {
+                    subtotalInput.value = subtotal.toFixed(2);
+                }
+            }
+
+            function showNotification(message, type) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerText = message;
+
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.classList.add('show');
+                }, 10);
+
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    notification.addEventListener('transitionend', () => notification.remove());
+                }, 3000);
+            }
+
+            // Finalizar venta
+            document.getElementById('finalizarVenta').addEventListener('click', () => {
+                const modal = new bootstrap.Modal(document.getElementById('confirmarVentaModal'));
+                modal.show();
+            });
+
+            document.getElementById('confirmarVenta').addEventListener('click', async () => {
+                const modalElement = document.getElementById('confirmarVentaModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+
+                if (modalInstance) {
+                    modalInstance.hide(); // Oculta el modal
+                }
+                if (productosSeleccionados.length === 0) {
+                    showNotification('Debe seleccionar al menos un producto.', 'danger');
+                    return;
+                }
+
+                const data = {
+                    id_socio: document.getElementById('id_socio').value || null,
+                    total_venta: parseFloat(totalVentaInput.value) || 0,
+                    monto_pagado: parseFloat(montoPagadoInput.value) || 0,
+                    saldo_pendiente: parseFloat(saldoPendienteInput.value) || 0,
+                    descripcion: document.getElementById('descripcion').value || null,
+                    credito: parseInt(document.getElementById('credito').value) || 0,
+                    servicio: parseInt(document.getElementById('servicio').value) || 0,
+                    finalizada: parseInt(document.getElementById('finalizada').value) || 0,
+                    productos: productosSeleccionados.map(producto => ({
+                        id: producto.id_producto,
+                        cantidad: producto.cantidad,
+                        subtotal: producto.subtotal
+                    }))
+                };
+
+                try {
+                    const response = await fetch('/ventas', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .getAttribute('content'),
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        showNotification(result.message, 'success');
+                        setTimeout(() => {
+                            window.location.href = result.redirect;
+                        }, 3000);
+                    } else {
+                        showNotification(result.message || 'Error al registrar la venta.', 'danger');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showNotification('Hubo un error al registrar la venta.', 'danger');
+                }
+            });
         });
     </script>
 @endsection

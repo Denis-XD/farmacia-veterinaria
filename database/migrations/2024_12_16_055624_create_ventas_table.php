@@ -19,7 +19,8 @@ class CreateVentasTable extends Migration
             $table->unsignedBigInteger('id_usuario');
             $table->unsignedBigInteger('id_socio')->nullable();
             $table->dateTime('fecha_venta', 3)->default(DB::raw('CURRENT_TIMESTAMP(3)'));
-            $table->double('total_venta', 10, 2);
+            $table->decimal('total_venta', 10, 2);
+            $table->decimal('descuento_venta', 10, 2)->default(0.0);
             $table->boolean('credito')->default(false);
             $table->boolean('servicio')->default(false);
             $table->boolean('finalizada')->default(false);

@@ -101,12 +101,44 @@
             @endif
 
             <!-- Enlaces de páginas -->
-            @foreach ($productosMinimoStock->getUrlRange(1, $productosMinimoStock->lastPage()) as $pagina => $url)
-                <li class="page-item {{ $productosMinimoStock->currentPage() == $pagina ? 'active' : '' }}">
+            @php
+                $totalPages = $productosMinimoStock->lastPage();
+                $currentPage = $productosMinimoStock->currentPage();
+                $range = 1; // Número de páginas visibles a izquierda y derecha de la actual
+                $start = max(1, $currentPage - $range);
+                $end = min($totalPages, $currentPage + $range);
+            @endphp
+
+            @if ($start > 1)
+                <li class="page-item">
                     <a class="page-link"
-                        href="{{ $url . '&' . http_build_query(request()->except('page')) }}">{{ $pagina }}</a>
+                        href="{{ $productosMinimoStock->url(1) . '&' . http_build_query(request()->except('page')) }}">1</a>
                 </li>
-            @endforeach
+                @if ($start > 2)
+                    <li class="page-item disabled d-none d-md-block">
+                        <span class="page-link">...</span>
+                    </li>
+                @endif
+            @endif
+
+            @for ($i = $start; $i <= $end; $i++)
+                <li class="page-item {{ $productosMinimoStock->currentPage() == $i ? 'active' : '' }}">
+                    <a class="page-link"
+                        href="{{ $productosMinimoStock->url($i) . '&' . http_build_query(request()->except('page')) }}">{{ $i }}</a>
+                </li>
+            @endfor
+
+            @if ($end < $totalPages)
+                @if ($end < $totalPages - 1)
+                    <li class="page-item disabled d-none d-md-block">
+                        <span class="page-link">...</span>
+                    </li>
+                @endif
+                <li class="page-item">
+                    <a class="page-link"
+                        href="{{ $productosMinimoStock->url($totalPages) . '&' . http_build_query(request()->except('page')) }}">{{ $totalPages }}</a>
+                </li>
+            @endif
 
             <!-- Enlace "Siguiente" -->
             @if ($productosMinimoStock->nextPageUrl())

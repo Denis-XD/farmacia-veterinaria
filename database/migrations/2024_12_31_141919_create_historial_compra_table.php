@@ -16,7 +16,7 @@ class CreateHistorialCompraTable extends Migration
         Schema::create('historial_compra', function (Blueprint $table) {
             $table->bigIncrements('id_historial');
             $table->unsignedBigInteger('id_producto');
-            $table->double('precio_compra', 8, 2);
+            $table->decimal('precio_compra', 8, 2);
             $table->dateTime('fecha_inicio', 3);
             $table->dateTime('fecha_fin', 3)->nullable();
             $table->timestamps();

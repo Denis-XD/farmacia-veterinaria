@@ -8,18 +8,43 @@
     <title>No autorizado</title>
     <link rel="stylesheet" href="{{ asset('css/error_styles.css') }}">
     <link href="{{ asset('css/bootstrap.css') }}" rel="stylesheet">
+    <style>
+        body {
+            background-color: #2ecc71;
+        }
+
+        .glass_card {
+            background: #047031;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-go-to-home {
+            background-color: #2d572c;
+            color: white;
+            padding: 0.5rem 1.5rem;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-go-to-home:hover {
+            background-color: #234424;
+        }
+
+        .text-white {
+            color: white !important;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="d-flex vh-100 align-items-center justify-content-center"
-        style="background-image: url(/assets/bg.jpg); background-position: center; background-size: cover;">
-        <div
-            class="d-flex flex-column gap-2 align-items-center justify-content-center glass_card text-white text-center">
+    <div class="d-flex vh-100 align-items-center justify-content-center">
+        <div class="d-flex flex-column gap-2 align-items-center justify-content-center glass_card text-white text-center">
             <h2 class="fs-1">Farmacia Veterinaria ALVA</h2>
             <div class="error">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-ban" width="72"
-                    height="72" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none"
-                    stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-ban" width="72" height="72" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
                     <path d="M5.7 5.7l12.6 12.6" />
@@ -29,9 +54,7 @@
             <p class="fs-3">No tiene permisos para acceder a esta sección.</p>
             <p class="fs-5">Si cree que es un error, póngase en contacto con un administrador.</p>
             <a href="{{ url('') }}" class="btn-go-to-home">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-smart-home"
-                    viewBox="0 0 24 24" stroke-width="1.5" width="24" height="24" stroke="currentColor"
-                    fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-smart-home" viewBox="0 0 24 24" stroke-width="1.5" width="24" height="24" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none" />
                     <path d="M5 12l-2 0l9 -9l9 9l-2 0" />
                     <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />

@@ -15,24 +15,24 @@ class CreateDetalleVentasTable extends Migration
     {
         Schema::create('detalle_venta', function (Blueprint $table) {
             $table->bigIncrements('id_detalle_venta');
-            $table->unsignedBigInteger('id_venta'); 
-            $table->unsignedBigInteger('id_producto'); 
-            $table->integer('cantidad_venta'); 
-            $table->double('subtotal_venta', 10, 2); 
-            $table->timestamps(); 
+            $table->unsignedBigInteger('id_venta');
+            $table->unsignedBigInteger('id_producto');
+            $table->decimal('cantidad_venta');
+            $table->decimal('subtotal_venta', 10, 2);
+            $table->timestamps();
 
             // Llaves foráneas
             $table->foreign('id_venta')
-                  ->references('id_venta')
-                  ->on('venta')
-                  ->onDelete('cascade')
-                  ->onUpdate('cascade');
+                ->references('id_venta')
+                ->on('venta')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
 
             $table->foreign('id_producto')
-                  ->references('id_producto')
-                  ->on('producto')
-                  ->onDelete('cascade')
-                  ->onUpdate('cascade');
+                ->references('id_producto')
+                ->on('producto')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
         });
     }
 

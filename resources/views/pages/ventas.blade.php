@@ -157,9 +157,9 @@
                             <td>{{ $venta->detalles->sum('cantidad_venta') }}</td>
                             <td>Bs {{ number_format($venta->total_venta, 2) }}</td>
                             <td>
-                                <div class="d-flex justify-content-start align-items-center">
+                                <div class="d-flex justify-content-start align-items-center col">
                                     <!-- Botón Detalles -->
-                                    <button class="btn btn-info text-white me-2 text-nowrap" data-bs-toggle="modal"
+                                    <button class="btn btn-info text-white" data-bs-toggle="modal"
                                         data-bs-target="#detallesModal{{ $venta->id_venta }}">Detalles</button>
 
                                     <!-- Modal Detalles -->
@@ -219,7 +219,57 @@
                                             class="btn btn-warning ms-2 me-2">Editar</a>
                                     @endcan
                                     <a href="{{ route('ventas.descargar', $venta->id_venta) }}"
-                                        class="btn btn-primary btn-sm text-nowrap">Descargar PDF</a>
+                                        class="btn btn-primary text-white me-2">PDF</a>
+                                    @can('venta_eliminar')
+                                        <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal"
+                                            data-bs-target="#deleteVentaModal{{ $venta->id_venta }}">
+                                            Eliminar
+                                        </button>
+                                    @endcan
+                                    @can('venta_eliminar')
+                                        <div class="modal fade" id="deleteVentaModal{{ $venta->id_venta }}" tabindex="-1"
+                                            aria-labelledby="deleteVentaModalLabel" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header text-white bg-danger">
+                                                        <svg width="24px" height="24px" viewBox="0 0 24 24"
+                                                            fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                            <path
+                                                                d="M21.7605 15.92L15.3605 4.4C14.5005 2.85 13.3105 2 12.0005 2C10.6905 2 9.50047 2.85 8.64047 4.4L2.24047 15.92C1.43047 17.39 1.34047 18.8 1.99047 19.91C2.64047 21.02 3.92047 21.63 5.60047 21.63H18.4005C20.0805 21.63 21.3605 21.02 22.0105 19.91C22.6605 18.8 22.5705 17.38 21.7605 15.92ZM11.2505 9C11.2505 8.59 11.5905 8.25 12.0005 8.25C12.4105 8.25 12.7505 8.59 12.7505 9V14C12.7505 14.41 12.4105 14.75 12.0005 14.75C11.5905 14.75 11.2505 14.41 11.2505 14V9ZM12.7105 17.71C12.6605 17.75 12.6105 17.79 12.5605 17.83C12.5005 17.87 12.4405 17.9 12.3805 17.92C12.3205 17.95 12.2605 17.97 12.1905 17.98C12.1305 17.99 12.0605 18 12.0005 18C11.9405 18 11.8705 17.99 11.8005 17.98C11.7405 17.97 11.6805 17.95 11.6205 17.92C11.5605 17.9 11.5005 17.87 11.4405 17.83C11.3905 17.79 11.3405 17.75 11.2905 17.71C11.1105 17.52 11.0005 17.26 11.0005 17C11.0005 16.74 11.1105 16.48 11.2905 16.29C11.3405 16.25 11.3905 16.21 11.4405 16.17C11.5005 16.13 11.5605 16.1 11.6205 16.08C11.6805 16.05 11.7405 16.03 11.8005 16.02C11.9305 15.99 12.0705 15.99 12.1905 16.02C12.2605 16.03 12.3205 16.05 12.3805 16.08C12.4405 16.1 12.5005 16.13 12.5605 16.17C12.6105 16.21 12.6605 16.25 12.7105 16.29C12.8905 16.48 13.0005 16.74 13.0005 17C13.0005 17.26 12.8905 17.52 12.7105 17.71Z"
+                                                                fill="#FFFFFF" />
+                                                        </svg>
+                                                        <h1 class="modal-title fs-5" id="exampleModalLabel">Eliminar venta
+                                                        </h1>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                                            aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p><strong>¡Cuidado!</strong> ¿Estás seguro de que deseas
+                                                            <strong>eliminar</strong> la
+                                                            venta
+                                                            <strong>"ID: {{ $venta->id_venta }}"</strong>?
+                                                            <br><br><strong>Nota:
+                                                            </strong>Esta acción
+                                                            no se puede revertir
+                                                            y se
+                                                            incrementará el stock de cada producto de acuerdo a la cantidad de
+                                                            venta.
+                                                        </p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Cancelar</button>
+                                                        <form action="{{ route('ventas.destroy', $venta->id_venta) }}"
+                                                            method="POST">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endcan
                                 </div>
                             </td>
                         </tr>
@@ -244,12 +294,44 @@
             @endif
 
             <!-- Enlaces de páginas -->
-            @foreach ($ventas->getUrlRange(1, $ventas->lastPage()) as $pagina => $url)
-                <li class="page-item {{ $ventas->currentPage() == $pagina ? 'active' : '' }}">
+            @php
+                $totalPages = $ventas->lastPage();
+                $currentPage = $ventas->currentPage();
+                $range = 1; // Número de páginas visibles a izquierda y derecha de la actual
+                $start = max(1, $currentPage - $range);
+                $end = min($totalPages, $currentPage + $range);
+            @endphp
+
+            @if ($start > 1)
+                <li class="page-item">
                     <a class="page-link"
-                        href="{{ $url . '&' . http_build_query(request()->except('page')) }}">{{ $pagina }}</a>
+                        href="{{ $ventas->url(1) . '&' . http_build_query(request()->except('page')) }}">1</a>
                 </li>
-            @endforeach
+                @if ($start > 2)
+                    <li class="page-item disabled d-none d-md-block">
+                        <span class="page-link">...</span>
+                    </li>
+                @endif
+            @endif
+
+            @for ($i = $start; $i <= $end; $i++)
+                <li class="page-item {{ $ventas->currentPage() == $i ? 'active' : '' }}">
+                    <a class="page-link"
+                        href="{{ $ventas->url($i) . '&' . http_build_query(request()->except('page')) }}">{{ $i }}</a>
+                </li>
+            @endfor
+
+            @if ($end < $totalPages)
+                @if ($end < $totalPages - 1)
+                    <li class="page-item disabled d-none d-md-block">
+                        <span class="page-link">...</span>
+                    </li>
+                @endif
+                <li class="page-item">
+                    <a class="page-link"
+                        href="{{ $ventas->url($totalPages) . '&' . http_build_query(request()->except('page')) }}">{{ $totalPages }}</a>
+                </li>
+            @endif
 
             <!-- Enlace "Siguiente" -->
             @if ($ventas->nextPageUrl())

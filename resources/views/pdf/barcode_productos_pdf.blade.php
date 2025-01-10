@@ -29,37 +29,65 @@
 
         .barcode-item {
             text-align: center;
-            width: 250px;
-            /* Tamaño más pequeño */
-            border: 1px solid #ddd;
+            width: 30%;
+            border: 1px solid #000000;
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin: 0 auto;
+            page-break-inside: avoid;
+            /* Evita que el elemento se divida entre páginas */
         }
 
         .barcode-item img {
-            width: 70%;
-            /* Más pequeño horizontalmente */
-            max-height: 60px;
-            /* Más pequeño verticalmente */
-            object-fit: contain;
-            margin: 10px auto;
-        }
-
-        .barcode-item p {
-            margin: 8px 0;
-            font-weight: bold;
+            max-width: 100%;
+            /* Asegura que las imágenes no se salgan del contenedor */
+            height: auto;
         }
 
         .barcode-item .nombre-producto {
-            font-size: 18px;
-            /* Nombre ligeramente más grande */
+            font-weight: bold;
+            margin-bottom: 5px;
         }
 
         .barcode-item .numero-codigo {
-            font-size: 14px;
-            /* Código ligeramente más pequeño */
+            font-size: 12px;
+            color: rgb(0, 0, 0);
+            margin-top: 5px;
+        }
+
+        @media print {
+
+            /* Controla los márgenes y la altura total de la página */
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            .barcode-container {
+                gap: 40px;
+                /* Reduce el espacio entre códigos al imprimir */
+            }
+
+            .barcode-item {
+                margin-bottom: 40px;
+                /* Espaciado uniforme al imprimir */
+            }
+
+            /* Configuración específica para limitar a 5 códigos por hoja */
+            @page {
+                size: A4;
+                /* Tamaño carta */
+                margin: 20mm;
+                /* Márgenes de la página */
+            }
+
+            .barcode-container {
+                display: grid;
+                grid-template-rows: repeat(5, auto);
+                /* Asegura 5 filas por hoja */
+                grid-auto-flow: row;
+            }
         }
     </style>
 </head>
@@ -68,9 +96,9 @@
     <h2 style="text-align: center; font-family: Arial, sans-serif;">Códigos de Barra</h2>
     <div class="barcode-container">
         @foreach ($productosActualizados as $producto)
-            <div class="barcode-item" style="margin-bottom: 10px;">
+            <div class="barcode-item">
                 <p class="nombre-producto">{{ $producto->nombre_producto }}</p>
-                <img src="data:image/png;base64,{{ DNS1D::getBarcodePNG($producto->codigo_barra, 'C128', 1.2, 30) }}"
+                <img src="data:image/png;base64,{{ DNS1D::getBarcodePNG($producto->codigo_barra, 'C128', 1, 50) }}"
                     alt="Código de Barra">
                 <p class="numero-codigo">{{ $producto->codigo_barra }}</p>
             </div>

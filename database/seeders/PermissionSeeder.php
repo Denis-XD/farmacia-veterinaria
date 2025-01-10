@@ -34,8 +34,6 @@ class PermissionSeeder extends Seeder
             'notificacion_crear',
             'notificacion_detalles',
 
-            'reglas',
-
             'mensaje_listar',
             'mensaje_crear',
             'mensaje_detalles',
@@ -62,14 +60,16 @@ class PermissionSeeder extends Seeder
 
             'compra_listar',
             'compra_registrar',
+            'compra_actualizar',
+            'compra_eliminar',
             'compra_dashboard',
 
             'venta_listar',
             'venta_registrar',
-            'venta_dashboard',
             'venta_actualizar',
+            'venta_eliminar',
+            'venta_dashboard',
             'venta_reporte_utilidad',
-
         ];
 
         foreach ($permissions as $permission) {

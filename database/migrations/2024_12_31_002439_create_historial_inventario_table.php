@@ -16,7 +16,7 @@ class CreateHistorialInventarioTable extends Migration
         Schema::create('historial_inventario', function (Blueprint $table) {
             $table->bigIncrements('id_historial');
             $table->unsignedBigInteger('id_producto');
-            $table->integer('stock'); // Stock del producto en el momento del cambio
+            $table->decimal('stock', 10, 2); // Stock del producto en el momento del cambio
             $table->dateTime('fecha', 3); // Fecha del cambio
             $table->string('motivo', 255)->nullable(); // Motivo del cambio (opcional: venta, compra, ajuste)
             $table->unsignedBigInteger('id_transaccion')->nullable(); // ID de la transacción asociada

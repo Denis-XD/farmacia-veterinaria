@@ -45,8 +45,8 @@
             <div class="row mb-3">
                 <div class="col-md-8">
                     <label for="codigo_barra" class="form-label">Código de Barras (Opcional)</label>
-                    <input type="text" name="codigo_barra" id="codigo_barra" class="form-control" maxlength="13"
-                        minlength="10">
+                    <input type="text" name="codigo_barra" id="codigo_barra" class="form-control" maxlength="15"
+                        minlength="5">
                 </div>
                 <div class="col-md-4 d-flex align-items-end">
                     <button type="button" id="generateBarcode" class="btn btn-secondary w-100">Generar Código de

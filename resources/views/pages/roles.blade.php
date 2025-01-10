@@ -251,8 +251,9 @@
                 <!-- Enlace "Anterior" -->
                 @if ($roles->previousPageUrl())
                     <li class="page-item">
-                        <a class="page-link" href="{{ $roles->previousPageUrl() }}" tabindex="-1"
-                            aria-disabled="true">Anterior</a>
+                        <a class="page-link"
+                            href="{{ $roles->previousPageUrl() . '&' . http_build_query(request()->except('page')) }}"
+                            tabindex="-1" aria-disabled="true">Anterior</a>
                     </li>
                 @else
                     <li class="page-item disabled">
@@ -261,16 +262,50 @@
                 @endif
 
                 <!-- Enlaces de páginas -->
-                @foreach ($roles->getUrlRange(1, $roles->lastPage()) as $pagina => $url)
-                    <li class="page-item {{ $roles->currentPage() == $pagina ? 'active' : '' }}">
-                        <a class="page-link" href="{{ $url }}">{{ $pagina }}</a>
+                @php
+                    $totalPages = $roles->lastPage();
+                    $currentPage = $roles->currentPage();
+                    $range = 1; // Número de páginas visibles a izquierda y derecha de la actual
+                    $start = max(1, $currentPage - $range);
+                    $end = min($totalPages, $currentPage + $range);
+                @endphp
+
+                @if ($start > 1)
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ $roles->url(1) . '&' . http_build_query(request()->except('page')) }}">1</a>
                     </li>
-                @endforeach
+                    @if ($start > 2)
+                        <li class="page-item disabled d-none d-md-block">
+                            <span class="page-link">...</span>
+                        </li>
+                    @endif
+                @endif
+
+                @for ($i = $start; $i <= $end; $i++)
+                    <li class="page-item {{ $roles->currentPage() == $i ? 'active' : '' }}">
+                        <a class="page-link"
+                            href="{{ $roles->url($i) . '&' . http_build_query(request()->except('page')) }}">{{ $i }}</a>
+                    </li>
+                @endfor
+
+                @if ($end < $totalPages)
+                    @if ($end < $totalPages - 1)
+                        <li class="page-item disabled d-none d-md-block">
+                            <span class="page-link">...</span>
+                        </li>
+                    @endif
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="{{ $roles->url($totalPages) . '&' . http_build_query(request()->except('page')) }}">{{ $totalPages }}</a>
+                    </li>
+                @endif
 
                 <!-- Enlace "Siguiente" -->
                 @if ($roles->nextPageUrl())
                     <li class="page-item">
-                        <a class="page-link" href="{{ $roles->nextPageUrl() }}">Siguiente</a>
+                        <a class="page-link"
+                            href="{{ $roles->nextPageUrl() . '&' . http_build_query(request()->except('page')) }}">Siguiente</a>
                     </li>
                 @else
                     <li class="page-item disabled">

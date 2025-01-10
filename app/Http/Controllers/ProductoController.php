@@ -80,7 +80,7 @@ class ProductoController extends Controller
 
         $messages = require_once app_path('config/validation.php');
         $request->validate([
-            'codigo_barra' => 'nullable|string|max:13|min:10|unique:producto,codigo_barra',
+            'codigo_barra' => 'nullable|string|max:15|min:5|unique:producto,codigo_barra',
             'nombre_producto' => 'required|string|max:50|min:4|unique:producto,nombre_producto',
             'unidad' => 'required|string|max:20|min:2',
             'fecha_vencimiento' => 'nullable|date',
@@ -162,7 +162,7 @@ class ProductoController extends Controller
 
         $messages = require_once app_path('config/validation.php');
         $request->validate([
-            'codigo_barra' => "nullable|string|max:13|min:10|unique:producto,codigo_barra,{$id},id_producto",
+            'codigo_barra' => "nullable|string|max:15|min:5|unique:producto,codigo_barra,{$id},id_producto",
             'nombre_producto' => "required|string|max:50|min:4|unique:producto,nombre_producto,{$id},id_producto",
             'unidad' => 'required|string|max:20|min:2',
             'fecha_vencimiento' => 'nullable|date',

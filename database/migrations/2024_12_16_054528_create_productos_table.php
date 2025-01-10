@@ -19,11 +19,11 @@ class CreateProductosTable extends Migration
             $table->string('nombre_producto', 191)->unique();
             $table->string('unidad', 191);
             $table->dateTime('fecha_vencimiento', 3)->nullable();
-            $table->double('porcentaje_utilidad', 8, 2)->default(20.0);
-            $table->double('precio_compra_actual', 8, 2);
-            $table->double('precio_venta_actual', 8, 2);
-            $table->integer('stock');
-            $table->integer('stock_minimo')->default(10);
+            $table->decimal('porcentaje_utilidad', 8, 2)->default(20.0);
+            $table->decimal('precio_compra_actual', 8, 2);
+            $table->decimal('precio_venta_actual', 8, 2);
+            $table->decimal('stock', 10, 2);
+            $table->decimal('stock_minimo', 10, 2)->default(10);
             $table->timestamps();
         });
     }

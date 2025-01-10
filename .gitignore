@@ -10,8 +10,10 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+Dockerfile
 .dockerignore
 .vscode/
+.docker/
 datos.sql
 estructura.sql
 reservas.sql

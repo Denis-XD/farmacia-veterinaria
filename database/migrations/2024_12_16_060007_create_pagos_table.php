@@ -17,8 +17,8 @@ class CreatePagosTable extends Migration
             $table->bigIncrements('id_pago'); 
             $table->unsignedBigInteger('id_venta'); 
             $table->dateTime('fecha_pago'); 
-            $table->double('monto_pagado', 10, 2); 
-            $table->double('saldo_pendiente', 10, 2)->nullable(); 
+            $table->decimal('monto_pagado', 10, 2); 
+            $table->decimal('saldo_pendiente', 10, 2)->nullable(); 
             $table->timestamps(); 
 
             // Llave foránea
