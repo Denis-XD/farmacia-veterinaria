@@ -41,15 +41,24 @@
             @endif
         </div>
         <!-- Totales -->
-        <div class="mb-3">
-            <h5>Total de Ventas: <span class="text-success">Bs
-                    {{ number_format($totalVentas, 2) }}</span></h5>
-            <h5>Total Costo de Ventas: <span class="text-danger">Bs
-                    {{ number_format($totalCosto, 2) }}</span></h5>
-            </h5>
-            <h5>Total de Utilidad Bruta: <span class="text-primary">Bs
-                    {{ number_format($totalUtilidad, 2) }}</span></h5>
-            </h5>
+        <div class="row mb-3">
+            <!-- Columna 1 -->
+            <div class="col-md-6 mb-3">
+                <h5>Total de Ventas: <span class="text-success">Bs
+                        {{ number_format($totalesGlobales['totalVentas'], 2) }}</span></h5>
+                <h5>Total Costo de Ventas: <span class="text-danger">Bs
+                        {{ number_format($totalesGlobales['totalCosto'], 2) }}</span></h5>
+                <h5>Total de Utilidad Bruta: <span class="text-primary">Bs
+                        {{ number_format($totalesGlobales['totalUtilidad'], 2) }}</span></h5>
+            </div>
+
+            <!-- Columna 2 -->
+            <div class="col-md-6 mb-3">
+                <h5>Total en Crédito: <span class="text-warning">Bs
+                        {{ number_format($totalesGlobales['totalCredito'], 2) }}</span></h5>
+                <h5>Total en Efectivo: <span class="text-info">Bs
+                        {{ number_format($totalesGlobales['totalEfectivo'], 2) }}</span></h5>
+            </div>
         </div>
         <div class="d-flex justify-content-end mb-3">
             <a href="{{ route('ventas.descargarReportePdf', request()->all()) }}" class="btn btn-danger">

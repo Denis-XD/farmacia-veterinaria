@@ -41,7 +41,7 @@
 
 <body>
     <div class="header">
-        <h3>Reporte de Utilidad</h3>
+        <h3>Reporte de Utilidad ({{ \Carbon\Carbon::now()->format('d/m/Y H:i:s') }})</h3>
         <p><strong>Filtros Aplicados:</strong></p>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
             <tr>

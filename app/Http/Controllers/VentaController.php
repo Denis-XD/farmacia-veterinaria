@@ -468,6 +468,8 @@ class VentaController extends Controller
         $filtros['finalizada'] = $filtros['finalizada'] ?? 'all';
         $filtros['orden'] = $filtros['orden'] ?? 'desc';
 
+        $totalesGlobales = $this->calcularTotalesGlobales($filtros);
+
         // Consulta base de las ventas con detalles y productos
         $ventas = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
@@ -496,15 +498,10 @@ class VentaController extends Controller
             ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc')
             ->paginate(10);
 
-        $totalEfectivo = 0;
-        $totalCredito = 0;
-        $totalVentas = 0;
-        $totalCosto = 0;
-        $totalUtilidad = 0;
 
         // Procesar cada venta
-        $ventas->getCollection()->transform(function ($venta) use (&$totalEfectivo, &$totalCredito,  &$totalVentas, &$totalCosto, &$totalUtilidad) {
-            $venta->detalles->transform(function ($detalle) use ($venta, &$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
+        $ventas->getCollection()->transform(function ($venta) {
+            $venta->detalles->transform(function ($detalle) use ($venta) {
                 // Obtener precio de venta y compra según fecha de la venta
                 $precioVenta = $detalle->producto->historialPrecios()
                     ->where('fecha_inicio', '<=', $venta->fecha_venta)
@@ -525,7 +522,7 @@ class VentaController extends Controller
                     ->value('precio_compra') ?? 0;
 
                 // Calcular valores
-                $detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
+                //$detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
                 $detalle->subtotal_costo = $detalle->cantidad_venta * $precioCompra;
                 $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
 
@@ -533,16 +530,10 @@ class VentaController extends Controller
                 if ($venta->credito) {
                     $detalle->efectivo = 0;
                     $detalle->credito = $detalle->subtotal_venta;
-                    $totalCredito += $detalle->subtotal_venta;
                 } else {
                     $detalle->efectivo = $detalle->subtotal_venta;
                     $detalle->credito = 0;
-                    $totalEfectivo += $detalle->subtotal_venta;
                 }
-
-                $totalVentas += $detalle->subtotal_venta;
-                $totalCosto += $detalle->subtotal_costo;
-                $totalUtilidad += $detalle->subtotal_utilidad;
 
                 return $detalle;
             });
@@ -550,7 +541,72 @@ class VentaController extends Controller
             return $venta;
         });
 
-        return view('pages.venta_reporte_utilidad', compact('ventas', 'filtros', 'totalEfectivo', 'totalCredito', 'totalVentas', 'totalCosto', 'totalUtilidad'));
+        return view('pages.venta_reporte_utilidad', compact('ventas', 'filtros', 'totalesGlobales'));
+    }
+
+    private function calcularTotalesGlobales(array $filtros)
+    {
+        $totales = [
+            'totalEfectivo' => 0,
+            'totalCredito' => 0,
+            'totalVentas' => 0,
+            'totalCosto' => 0,
+            'totalUtilidad' => 0,
+        ];
+
+        $ventasGlobales = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
+            ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
+                $query->whereDate('fecha_venta', $filtros['fecha']);
+            })
+            ->when(!empty($filtros['fecha_desde']), function ($query) use ($filtros) {
+                $query->whereDate('fecha_venta', '>=', $filtros['fecha_desde']);
+            })
+            ->when(!empty($filtros['fecha_hasta']), function ($query) use ($filtros) {
+                $query->whereDate('fecha_venta', '<=', $filtros['fecha_hasta']);
+            })
+            ->when(!empty($filtros['socio']), function ($query) use ($filtros) {
+                $query->whereHas('socio', function ($q) use ($filtros) {
+                    $q->where('nombre_socio', 'LIKE', '%' . $filtros['socio'] . '%');
+                });
+            })
+            ->when($filtros['credito'] !== 'all', function ($query) use ($filtros) {
+                $query->where('credito', $filtros['credito']);
+            })
+            ->when($filtros['servicio'] !== 'all', function ($query) use ($filtros) {
+                $query->where('servicio', $filtros['servicio']);
+            })
+            ->when($filtros['finalizada'] !== 'all', function ($query) use ($filtros) {
+                $query->where('finalizada', $filtros['finalizada']);
+            })
+            ->get();
+
+        foreach ($ventasGlobales as $venta) {
+            foreach ($venta->detalles as $detalle) {
+                $precioCompra = $detalle->producto->historialPreciosCompra()
+                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
+                    ->where(function ($query) use ($venta) {
+                        $query->whereNull('fecha_fin')
+                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+                    })
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->value('precio_compra') ?? 0;
+
+                $subtotalCosto = $detalle->cantidad_venta * $precioCompra;
+                $subtotalUtilidad = $detalle->subtotal_venta - $subtotalCosto;
+
+                if ($venta->credito) {
+                    $totales['totalCredito'] += $detalle->subtotal_venta;
+                } else {
+                    $totales['totalEfectivo'] += $detalle->subtotal_venta;
+                }
+
+                $totales['totalVentas'] += $detalle->subtotal_venta;
+                $totales['totalCosto'] += $subtotalCosto;
+                $totales['totalUtilidad'] += $subtotalUtilidad;
+            }
+        }
+
+        return $totales;
     }
 
     public function descargarReportePdf(Request $request)
@@ -643,7 +699,7 @@ class VentaController extends Controller
                     ->value('precio_compra') ?? 0;
 
                 // Calcular valores
-                $detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
+                //$detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
                 $detalle->subtotal_costo = $detalle->cantidad_venta * $precioCompra;
                 $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
 
