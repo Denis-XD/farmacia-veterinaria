@@ -9,6 +9,7 @@ use App\Models\DetalleVenta;
 use App\Models\Pago;
 use App\Models\Servicio;
 use App\Models\Compra;
+use Carbon\Carbon;
 use App\Models\HistorialInventario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -99,11 +100,13 @@ class VentaController extends Controller
         $request->validate([
             'productos' => 'required|array|min:1',
             'productos.*.id' => 'required|exists:producto,id_producto',
-            'productos.*.cantidad' => 'required|integer|min:1',
+            'productos.*.cantidad' => 'required|numeric|min:1',
             'productos.*.subtotal' => 'required|numeric|min:0',
             'total_venta' => 'required|numeric|min:0',
             'monto_pagado' => 'required|numeric|min:0',
             'saldo_pendiente' => 'nullable|numeric|min:0',
+            'descuento_venta' => 'nullable|integer|min:0|max:100',
+            'fecha_venta' => 'nullable|date',
             'credito' => 'required|boolean',
             'servicio' => 'required|boolean',
             'finalizada' => 'required|boolean',
@@ -113,11 +116,14 @@ class VentaController extends Controller
         try {
             DB::beginTransaction();
 
+            $fechaVenta = $request->input('fecha_venta') ?? now();
+
             $venta = Venta::create([
                 'id_usuario' => Auth::id(),
                 'id_socio' => $request->input('id_socio', null),
-                'fecha_venta' => now(),
+                'fecha_venta' => $fechaVenta,
                 'total_venta' => $request->input('total_venta'),
+                'descuento_venta' => $request->input('descuento_venta'),
                 'credito' => $request->input('credito'),
                 'servicio' => $request->input('servicio'),
                 'finalizada' => $request->input('finalizada'),
@@ -189,10 +195,16 @@ class VentaController extends Controller
     {
         abort_if(Gate::denies('venta_actualizar'), 403);
 
-        $venta = Venta::with(['detalles.producto', 'pagos', 'servicioVeterinario'])->findOrFail($id);
-        //return response()->json(['venta' => $venta], 200);
-        return view('pages.venta_editar', compact('venta'));
+        $venta = Venta::with(['detalles.producto', 'pagos', 'socio', 'usuario'])
+            ->findOrFail($id);
+
+        $productos = Producto::where('stock', '>', 0)->get();
+
+        $socios = Socio::all();
+
+        return view('pages.venta_editar', compact('venta', 'productos', 'socios'));
     }
+
     /**
      * Update the specified resource in storage.
      *
@@ -204,84 +216,175 @@ class VentaController extends Controller
     {
         abort_if(Gate::denies('venta_actualizar'), 403);
 
-        $request->validate(
-            [
-                'credito' => 'required|boolean',
-                'servicio' => 'required|boolean',
-                'finalizada' => 'required|boolean',
-                'nuevo_pago' => 'nullable|numeric|min:0',
-                'saldo_pendiente' => 'nullable|numeric|min:0',
-                'tratamiento' => 'nullable|string|max:200|required_if:servicio,1',
-                'fecha_servicio' => 'nullable|date|required_if:servicio,1',
-                'costo_servicio' => 'nullable|numeric|min:0|required_if:servicio,1',
-                'costo_combustible' => 'nullable|numeric|min:0|required_if:servicio,1',
-            ],
-            [
-                'tratamiento.required_if' => 'El campo tratamiento es obligatorio cuando el servicio es "Sí".',
-                'fecha_servicio.required_if' => 'El campo fecha servicio es obligatorio cuando el servicio es "Sí".',
-                'costo_servicio.required_if' => 'El campo costo servicio es obligatorio cuando el servicio es "Sí".',
-                'costo_combustible.required_if' => 'El campo costo combustible es obligatorio cuando el servicio es "Sí".',
-            ]
-        );
+        $request->validate([
+            'id_socio' => 'nullable|exists:socio,id_socio',
+            'productosEliminados' => 'nullable|array',
+            'productosEliminados.*' => 'exists:detalle_venta,id_detalle_venta',
+            'total_venta' => 'required|numeric|min:0',
+            'descuento_venta' => 'nullable|numeric|min:0|max:100',
+            'fecha_venta' => 'nullable|date',
+            'monto_pagado' => 'nullable|numeric|min:0',
+            'saldo_pendiente' => 'nullable|numeric|min:0',
+            'descripcion' => 'nullable|string|max:200',
+            'credito' => 'required|boolean',
+            'servicio' => 'required|boolean',
+            'finalizada' => 'required|boolean',
+            'productos' => 'required|array|min:1',
+            'productos.*.id' => 'required|exists:producto,id_producto',
+            'productos.*.cantidad' => 'required|numeric|min:1',
+            'productos.*.subtotal' => 'required|numeric|min:0',
+            'productos.*.esExistente' => 'required|boolean',
+            'productos.*.modificado' => 'required|boolean',
+            'pagos' => 'nullable|array',
+            'pagos.*.id_pago' => 'required|exists:pago,id_pago',
+            'pagos.*.fecha_pago' => 'required|date',
+            'pagos.*.monto_pagado' => 'required|numeric|min:0',
+            'pagos.*.saldo_pendiente' => 'required|numeric|min:0',
+            'pagosEliminados' => 'nullable|array',
+            'pagosEliminados.*' => 'exists:pago,id_pago',
+        ]);
 
         try {
             DB::beginTransaction();
 
-            // Actualizar los datos de la venta
             $venta = Venta::findOrFail($id);
-            $venta->credito = $request->credito;
-            $venta->servicio = $request->servicio;
-            $venta->finalizada = $request->finalizada;
-            $venta->save();
 
-            // Crear un nuevo pago si se añadió
-            if ($request->nuevo_pago && $request->nuevo_pago > 0) {
+            $fechaVenta = $request->fecha_venta ?? Carbon::now();
+
+            // Actualizar información de la venta
+            $venta->update([
+                'id_socio' => $request->id_socio,
+                'total_venta' => $request->total_venta,
+                'descuento_venta' => $request->descuento_venta,
+                'fecha_venta' => $fechaVenta,
+                'credito' => $request->credito,
+                'servicio' => $request->servicio,
+                'finalizada' => $request->finalizada,
+                'descripcion' => $request->descripcion,
+            ]);
+
+            // Eliminar pagos
+            if (!empty($request->pagosEliminados)) {
+                Pago::whereIn('id_pago', $request->pagosEliminados)->delete();
+            }
+
+            // Actualizar pagos existentes
+            if (!empty($request->pagos)) {
+                foreach ($request->pagos as $pago) {
+                    Pago::findOrFail($pago['id_pago'])->update([
+                        'fecha_pago' => $pago['fecha_pago'],
+                        'monto_pagado' => $pago['monto_pagado'],
+                        'saldo_pendiente' => $pago['saldo_pendiente'],
+                    ]);
+                }
+            }
+
+            // Crear un nuevo pago si el monto_pagado es mayor a 0
+            if ($request->monto_pagado > 0) {
                 Pago::create([
                     'id_venta' => $venta->id_venta,
-                    'fecha_pago' => now(),
-                    'monto_pagado' => $request->nuevo_pago,
+                    'fecha_pago' => $fechaVenta,
+                    'monto_pagado' => $request->monto_pagado,
                     'saldo_pendiente' => $request->saldo_pendiente,
                 ]);
             }
 
-            // Verificar si el servicio es true
-            if ($request->servicio) {
-                // Si servicio es true, verificar si ya existe un servicio
-                $servicio = Servicio::where('id_venta', $venta->id_venta)->first();
+            // Procesar productos eliminados
+            if (!empty($request->productosEliminados)) {
+                foreach ($request->productosEliminados as $idDetalle) {
+                    $detalle = DetalleVenta::findOrFail($idDetalle);
 
-                if ($servicio) {
-                    // Actualizar el servicio existente
-                    $servicio->update([
-                        'tratamiento' => $request->tratamiento,
-                        'fecha_servicio' => $request->fecha_servicio,
-                        'costo_servicio' => $request->costo_servicio,
-                        'costo_combustible' => $request->costo_combustible,
-                        'total_servicio' => $request->costo_servicio + $request->costo_combustible + $venta->total_venta,
-                    ]);
+                    // Reducir el stock del producto
+                    Producto::where('id_producto', $detalle->id_producto)
+                        ->increment('stock', $detalle->cantidad_venta);
+
+                    // Eliminar el registro del historial de inventario
+                    HistorialInventario::where('id_producto', $detalle->id_producto)
+                        ->where('id_transaccion', $venta->id_venta)
+                        ->where('tipo_transaccion', 'Venta')
+                        ->delete();
+
+                    // Eliminar el detalle de la venta
+                    $detalle->delete();
+                }
+            }
+
+            // Procesar productos existentes y nuevos
+            foreach ($request->productos as $producto) {
+                if ($producto['esExistente']) {
+                    // Producto existente
+                    $detalle = DetalleVenta::where('id_venta', $venta->id_venta)
+                        ->where('id_producto', $producto['id'])
+                        ->firstOrFail();
+
+                    if ($producto['modificado']) {
+                        // Calcular la diferencia de stock
+                        $diferencia = $producto['cantidad'] - $detalle->cantidad_venta;
+
+                        if ($diferencia != 0) {
+                            // Actualizar el stock del producto
+                            Producto::where('id_producto', $producto['id'])
+                                ->decrement('stock', $diferencia);
+
+                            // Actualizar el historial de inventario
+                            $historial = HistorialInventario::where('id_producto', $producto['id'])
+                                ->where('id_transaccion', $venta->id_venta)
+                                ->where('tipo_transaccion', 'Venta')
+                                ->first();
+
+                            if ($historial) {
+                                $historial->update([
+                                    'stock' => $producto['cantidad'],
+                                    'fecha' => $fechaVenta,
+                                ]);
+                            }
+                        }
+
+                        // Actualizar el detalle de la venta
+                        $detalle->update([
+                            'cantidad_venta' => $producto['cantidad'],
+                            'subtotal_venta' => $producto['subtotal'],
+                        ]);
+                    }
                 } else {
-                    // Crear un nuevo servicio
-                    Servicio::create([
-                        'id_venta' => $venta->id_venta,
-                        'tratamiento' => $request->tratamiento,
-                        'fecha_servicio' => $request->fecha_servicio,
-                        'costo_servicio' => $request->costo_servicio,
-                        'costo_combustible' => $request->costo_combustible,
-                        'total_servicio' => $request->costo_servicio + $request->costo_combustible + $venta->total_venta,
+                    // Producto nuevo
+                    $venta->detalles()->create([
+                        'id_producto' => $producto['id'],
+                        'cantidad_venta' => $producto['cantidad'],
+                        'subtotal_venta' => $producto['subtotal'],
+                    ]);
+
+                    // Reducir el stock del producto
+                    Producto::where('id_producto', $producto['id'])
+                        ->decrement('stock', $producto['cantidad']);
+
+                    // Registrar en el historial de inventario
+                    HistorialInventario::create([
+                        'id_producto' => $producto['id'],
+                        'stock' => $producto['cantidad'],
+                        'fecha' => $fechaVenta,
+                        'motivo' => 'Venta',
+                        'id_transaccion' => $venta->id_venta,
+                        'tipo_transaccion' => 'Venta',
                     ]);
                 }
-            } else {
-                // Si servicio es false, eliminar el servicio si existe
-                Servicio::where('id_venta', $venta->id_venta)->delete();
             }
 
             DB::commit();
 
-            return redirect()->route('ventas.edit', $id)->with('success', 'Venta actualizada correctamente.');
+            return response()->json([
+                'success' => true,
+                'message' => 'Venta actualizada correctamente.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Error al actualizar la venta: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la venta: ' . $e->getMessage(),
+            ], 500);
         }
     }
+
     /**
      * Remove the specified resource from storage.
      *

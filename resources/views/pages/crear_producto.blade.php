@@ -99,12 +99,13 @@
             <div class="row mb-3">
                 <div class="col-md-6">
                     <label for="stock" class="form-label">Stock</label>
-                    <input type="number" name="stock" id="stock" class="form-control" required min="0">
+                    <input type="number" name="stock" id="stock" class="form-control" step="0.01"
+                        min="0" required>
                 </div>
                 <div class="col-md-6">
                     <label for="stock_minimo" class="form-label">Stock Mínimo</label>
-                    <input type="number" name="stock_minimo" id="stock_minimo" class="form-control" required
-                        min="0">
+                    <input type="number" name="stock_minimo" id="stock_minimo" class="form-control" step="0.01"
+                        min="0" required>
                 </div>
             </div>
 

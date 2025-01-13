@@ -38,13 +38,13 @@
         </div>
     @endif
     <div class="container mt-4">
-        <!-- Buscador de proveedor -->
+
+        <!-- Buscar Proveedor -->
         <div class="card mb-4">
             <div class="card-header">Buscar Proveedor</div>
             <div class="card-body">
                 <div class="input-group mb-3">
                     <input type="text" id="buscarProveedor" class="form-control" placeholder="Buscar por ID o Nombre">
-                    <button class="btn btn-primary" id="btnBuscarProveedor">Buscar</button>
                 </div>
                 <div id="resultadoProveedor" class="table-responsive">
                     <table class="table table-bordered table-hover d-none" id="tablaProveedores">
@@ -68,20 +68,18 @@
             <h5>Proveedor Seleccionado:</h5>
             <div class="alert alert-info d-flex justify-content-between align-items-center">
                 <span id="nombreProveedor"></span>
-                <button class="btn btn-danger btn-sm" id="quitarProveedor">Quitar</button>
+                <!-- <button class="btn btn-danger btn-sm" id="quitarProveedor">Quitar</button>-->
             </div>
         </div>
 
-        <!-- Buscador de productos -->
+        <!-- Buscar Productos -->
         <div class="card mb-4">
             <div class="card-header">Buscar Productos</div>
             <div class="card-body">
                 <div class="input-group mb-3">
                     <input type="text" id="buscarProducto" class="form-control"
                         placeholder="Buscar por ID, Código de Barra o Nombre">
-                    <button class="btn btn-primary" id="btnBuscarProducto">Buscar</button>
                 </div>
-                <!-- Resultados de búsqueda de productos -->
                 <div id="resultadoProducto">
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover d-none" id="tablaProductos">
@@ -119,23 +117,33 @@
                 </table>
             </div>
         </div>
+
         <div class="row mb-4 align-items-center">
             <!-- Porcentaje de Descuento -->
-            <div class="col-auto d-flex align-items-center">
+            <div class="col-auto d-flex align-items-center" style="gap: 0.001rem;">
                 <label for="porcentajeDescuento" class="form-label mb-0 me-2">Porcentaje de Descuento:</label>
                 <input type="number" id="porcentajeDescuento" class="form-control" placeholder="0-100" min="0"
-                    max="100" style="max-width: 100px;">
+                    max="100" step="1" style="max-width: 100px;" value="0">
+            </div>
+            <!-- Fecha de Compra -->
+            <div class="col-auto d-flex align-items-center ms-3">
+                <label for="fechaCompra" class="form-label mb-0 me-2">Fecha de Compra:</label>
+                <input type="date" id="fechaCompra" class="form-control" style="max-width: 200px;">
             </div>
             <!-- Opciones de Factura -->
             <div class="col-auto d-flex align-items-center ms-3">
+
+                <label class="form-check-label mb-0  me-3" for="compraConFactura">¿Compra con factura?</label>
                 <input type="checkbox" class="form-check-input me-2" id="compraConFactura">
-                <label class="form-check-label mb-0" for="compraConFactura">¿Compra con factura?</label>
             </div>
         </div>
 
         <!-- Resumen de Compra -->
         <div class="d-flex align-items-center flex-wrap gap-2 justify-content-between">
-            <h5 class="mb-0">Total de la Compra: <span id="totalCompra">Bs 0.00</span></h5>
+            <label for="totalCompraInput" class="form-label mb-0">Total de la Compra: Bs</label>
+            <input type="number" id="totalCompraInput" class="form-control text-end" style="max-width: 120px;"
+                min="0" step="0.01" value="0.00">
+
             <div class="ms-auto">
                 <button class="btn btn-success mt-2 mt-md-0" id="finalizarCompra">Finalizar Compra</button>
             </div>
@@ -240,274 +248,341 @@
     <script>
         let proveedorSeleccionado = null;
         let productosSeleccionados = [];
-
-        // Obtener los datos de proveedores y productos enviados desde el controlador
         const proveedores = @json($proveedores);
         const productos = @json($productos);
 
-        // Buscar y mostrar proveedores localmente
-        document.getElementById('btnBuscarProveedor').addEventListener('click', function() {
-            const buscar = document.getElementById('buscarProveedor').value.toLowerCase();
+        document.addEventListener("DOMContentLoaded", () => {
+            const buscarProductoInput = document.getElementById('buscarProducto');
+            const buscarProveedorInput = document.getElementById('buscarProveedor');
+            const totalCompraInput = document.getElementById('totalCompraInput');
+            const porcentajeDescuentoInput = document.getElementById('porcentajeDescuento');
+            const tabla = document.getElementById('tablaProductos');
+            const tbody = tabla.querySelector('tbody');
 
-            // Filtrar proveedores localmente
-            const resultados = proveedores.filter(proveedor =>
-                proveedor.id_proveedor.toString().includes(buscar) ||
-                proveedor.nombre_proveedor.toLowerCase().includes(buscar)
-            );
+            // Buscar proveedores dinámicamente
+            buscarProveedorInput.addEventListener("input", function() {
+                const buscar = this.value.toLowerCase().trim();
+                const resultados = buscar ?
+                    proveedores.filter(
+                        (proveedor) =>
+                        proveedor.id_proveedor.toString().includes(buscar) ||
+                        proveedor.nombre_proveedor.toLowerCase().includes(buscar)
+                    ) : [];
+                renderProveedores(resultados);
+            });
 
-            const tbody = document.querySelector('#tablaProveedores tbody');
-            const tabla = document.getElementById('tablaProveedores');
-            tbody.innerHTML = '';
+            function renderProveedores(resultados) {
+                const tabla = document.getElementById("tablaProveedores");
+                const tbody = tabla.querySelector("tbody");
+                tbody.innerHTML = "";
 
-            if (resultados.length > 0) {
-                tabla.classList.remove('d-none');
-                resultados.forEach(proveedor => {
-                    tbody.innerHTML += `
-        <tr>
-            <td>${proveedor.id_proveedor}</td>
-            <td>${proveedor.nombre_proveedor}</td>
-            <td>${proveedor.direccion || 'N/A'}</td>
-            <td>${proveedor.celular_proveedor || 'N/A'}</td>
-            <td>
-                <button class="btn btn-success btn-sm btn-choose-proveedor" data-id="${proveedor.id_proveedor}">Añadir</button>
-            </td>
-        </tr>`;
-                });
-
-            } else {
-                tabla.classList.add('d-none');
-                alert('No se encontraron proveedores.');
+                if (resultados.length > 0) {
+                    tabla.classList.remove("d-none");
+                    resultados.forEach((proveedor) => {
+                        tbody.innerHTML += `
+                    <tr>
+                        <td>${proveedor.id_proveedor}</td>
+                        <td>${proveedor.nombre_proveedor}</td>
+                        <td>${proveedor.direccion || "N/A"}</td>
+                        <td>${proveedor.celular_proveedor || "N/A"}</td>
+                        <td>
+                            <button class="btn btn-success btn-sm btn-choose-proveedor" data-id="${proveedor.id_proveedor}">
+                                Añadir
+                            </button>
+                        </td>
+                    </tr>`;
+                    });
+                } else {
+                    tabla.classList.add("d-none");
+                    //showNotification('No se encontraron proveedores.', 'danger');
+                }
             }
-        });
-        document.addEventListener('click', function(event) {
-            // Selección de proveedor
-            if (event.target.classList.contains('btn-choose-proveedor')) {
-                const idProveedor = event.target.getAttribute('data-id');
-                const proveedor = proveedores.find(p => p.id_proveedor == idProveedor);
 
-                if (proveedorSeleccionado) {
-                    showNotification('Solo se puede seleccionar un proveedor.', 'danger');
+            // Seleccionar proveedor
+            document.addEventListener("click", function(event) {
+                if (event.target.classList.contains("btn-choose-proveedor")) {
+                    const idProveedor = event.target.dataset.id;
+                    const proveedor = proveedores.find((p) => p.id_proveedor == idProveedor);
+
+                    proveedorSeleccionado = proveedor;
+                    document.getElementById("proveedorSeleccionado").classList.remove("d-none");
+                    document.getElementById("nombreProveedor").innerText = proveedor.nombre_proveedor;
+                }
+            });
+
+            // Búsqueda dinámica mientras se escribe
+            buscarProductoInput.addEventListener('input', () => {
+                const buscar = buscarProductoInput.value.toLowerCase().trim();
+
+                if (!buscar) {
+                    tabla.classList.add('d-none');
+                    tbody.innerHTML = '';
                     return;
                 }
 
-                seleccionarProveedor(proveedor);
-            }
+                const resultados = productos.filter(producto =>
+                    producto.id_producto.toString().includes(buscar) ||
+                    (producto.codigo_barra && producto.codigo_barra.toLowerCase().includes(buscar)) ||
+                    producto.nombre_producto.toLowerCase().includes(buscar)
+                );
 
-            // Selección de producto
-            if (event.target.classList.contains('btn-choose-producto')) {
-                const idProducto = event.target.getAttribute('data-id');
-                const producto = productos.find(p => p.id_producto == idProducto);
-
-                añadirProducto(producto);
-            }
-        });
-
-        function seleccionarProveedor(proveedor) {
-            proveedorSeleccionado = proveedor;
-            document.getElementById('proveedorSeleccionado').classList.remove('d-none');
-            document.getElementById('nombreProveedor').innerText = proveedor.nombre_proveedor;
-        }
-
-
-        document.getElementById('quitarProveedor').addEventListener('click', function() {
-            proveedorSeleccionado = null;
-            document.getElementById('proveedorSeleccionado').classList.add('d-none');
-        });
-
-        // Buscar y mostrar productos localmente
-        document.getElementById('btnBuscarProducto').addEventListener('click', function() {
-            const buscar = document.getElementById('buscarProducto').value.toLowerCase();
-
-            // Filtrar productos localmente
-            const resultados = productos.filter(producto =>
-                producto.id_producto.toString().includes(buscar) ||
-                (producto.codigo_barra && producto.codigo_barra.includes(buscar)) ||
-                producto.nombre_producto.toLowerCase().includes(buscar)
-            );
-
-            const tbody = document.querySelector('#tablaProductos tbody');
-            const tabla = document.getElementById('tablaProductos');
-            tbody.innerHTML = '';
-
-            if (resultados.length > 0) {
-                tabla.classList.remove('d-none');
-                resultados.forEach(producto => {
-                    tbody.innerHTML += `
-        <tr>
-            <td>${producto.id_producto}</td>
-            <td>${producto.codigo_barra || 'N/A'}</td>
-            <td>${producto.nombre_producto}</td>
-            <td>${producto.stock}</td>
-            <td>
-                <button class="btn btn-success btn-sm btn-choose-producto" data-id="${producto.id_producto}">Añadir</button>
-            </td>
-        </tr>`;
-                });
-
-            } else {
-                tabla.classList.add('d-none');
-                showNotification('No se encontraron productos.', 'danger');
-            }
-        });
-
-        function añadirProducto(producto) {
-            const existe = productosSeleccionados.some(p => p.id_producto === producto.id_producto);
-            if (existe) {
-                showNotification('El producto ya está añadido.', 'danger');
-                return;
-            }
-
-            producto.cantidad = 1; // Cantidad inicial
-            producto.subtotal = producto.precio_compra_actual; // Subtotal inicial
-            productosSeleccionados.push(producto);
-            renderProductos();
-        }
-
-        function renderProductos() {
-            const tbody = document.getElementById('listaProductos');
-            tbody.innerHTML = '';
-
-            productosSeleccionados.forEach(producto => {
-                tbody.innerHTML += `
-            <tr>
-                <td>${producto.nombre_producto}</td>
-                <td>Bs ${producto.precio_compra_actual.toFixed(2)}</td>
-                <td>
-                    <input type="number" class="form-control cantidad" value="${producto.cantidad}" min="1" onchange="actualizarCantidad(${producto.id_producto}, this.value)">
-                </td>
-                <td>Bs ${(producto.cantidad * producto.precio_compra_actual).toFixed(2)}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="quitarProducto(${producto.id_producto})">Quitar</button></td>
-            </tr>`;
+                tbody.innerHTML = '';
+                if (resultados.length > 0) {
+                    tabla.classList.remove('d-none');
+                    resultados.forEach(producto => {
+                        tbody.innerHTML += `
+                        <tr>
+                            <td>${producto.id_producto}</td>
+                            <td>${producto.codigo_barra || 'N/A'}</td>
+                            <td>${producto.nombre_producto}</td>
+                            <td>${producto.stock}</td>
+                            <td>
+                                <button class="btn btn-success btn-sm btn-choose-producto" 
+                                    data-id="${producto.id_producto}">Añadir</button>
+                            </td>
+                        </tr>`;
+                    });
+                } else {
+                    tabla.classList.add('d-none');
+                    showNotification('No se encontraron productos.', 'danger');
+                }
             });
 
-            actualizarTotal();
-        }
+            // Manejar clic para añadir productos
+            document.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-choose-producto')) {
+                    const idProducto = parseInt(event.target.getAttribute('data-id'));
+                    const producto = productos.find(p => p.id_producto === idProducto);
 
-        function actualizarCantidad(id, cantidad) {
-            const producto = productosSeleccionados.find(p => p.id_producto === id);
-            if (producto) {
-                producto.cantidad = parseInt(cantidad);
-                producto.subtotal = producto.cantidad * producto.precio_compra_actual;
+                    if (!producto) {
+                        showNotification('Producto no encontrado.', 'danger');
+                        return;
+                    }
+
+                    añadirProducto(producto);
+                }
+            });
+
+            function añadirProducto(producto) {
+                if (productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
+                    showNotification('El producto ya está añadido.', 'danger');
+                    return;
+                }
+
+                if (producto.stock <= 0) {
+                    showNotification('El producto no tiene stock disponible.', 'danger');
+                    return;
+                }
+                //
+                producto.cantidad = 1;
+                producto.subtotal = (producto.cantidad * producto.precio_compra_actual).toFixed(2);
+                productosSeleccionados.push(producto);
                 renderProductos();
             }
-        }
 
-        function quitarProducto(id) {
-            productosSeleccionados = productosSeleccionados.filter(p => p.id_producto !== id);
-            renderProductos();
-        }
+            function renderProductos() {
+                const tbody = document.getElementById('listaProductos');
+                tbody.innerHTML = '';
 
-        function actualizarTotal() {
-            const total = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
-            document.getElementById('totalCompra').innerText = `Bs ${total.toFixed(2)}`;
-        }
-
-        function showNotification(message, type) {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerText = message;
-
-            document.body.appendChild(notification);
-
-            // Agregar la clase para la animación de entrada
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-
-            // Quitar la notificación después de 3 segundos
-            setTimeout(() => {
-                notification.classList.remove('show');
-                // Remover el elemento después de la transición
-                notification.addEventListener('transitionend', () => notification.remove());
-            }, 5000);
-        }
-
-        function actualizarTotal() {
-            let total = productosSeleccionados.reduce((sum, producto) => sum + producto.subtotal, 0);
-
-            const porcentajeDescuento = parseInt(document.getElementById('porcentajeDescuento').value) || 0;
-
-            if (porcentajeDescuento > 0 && porcentajeDescuento <= 100) {
-                total -= (total * porcentajeDescuento) / 100;
-            }
-
-            document.getElementById('totalCompra').innerText = `Bs ${total.toFixed(2)}`;
-        }
-
-        // Escuchar cambios en el porcentaje de descuento
-        document.getElementById('porcentajeDescuento').addEventListener('input', actualizarTotal);
-
-
-        document.getElementById('finalizarCompra').addEventListener('click', function() {
-            const modal = new bootstrap.Modal(document.getElementById('confirmarCompraModal'));
-            modal.show();
-        });
-
-        document.getElementById('confirmarCompra').addEventListener('click', async function() {
-            const modalElement = document.getElementById('confirmarCompraModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalElement);
-            modalInstance.hide();
-
-            if (!proveedorSeleccionado) {
-                showNotification('Debe seleccionar un proveedor.', 'danger');
-                return;
-            }
-
-            if (productosSeleccionados.length === 0) {
-                showNotification('Debe seleccionar al menos un producto.', 'danger');
-                return;
-            }
-
-            const porcentajeDescuento = parseInt(document.getElementById('porcentajeDescuento').value) || 0;
-
-            if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
-                showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
-                return;
-            }
-
-            const data = {
-                proveedor_id: proveedorSeleccionado.id_proveedor,
-                factura_compra: document.getElementById('compraConFactura').checked ? 1 : 0,
-                descuento_compra: porcentajeDescuento,
-                productos: productosSeleccionados.map(producto => ({
-                    id: producto.id_producto,
-                    cantidad: producto.cantidad,
-                    subtotal: producto.subtotal,
-                    descripcion: producto.descripcion || null,
-                })),
-            };
-
-            try {
-                // Usa `await` aquí para esperar la respuesta
-                const response = await fetch('/compras', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                            'content'),
-                    },
-                    body: JSON.stringify(data),
+                productosSeleccionados.forEach((producto, index) => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td>${producto.nombre_producto}</td>
+                    <td>Bs ${producto.precio_compra_actual}</td>
+                    <td>
+                        <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
+                            step="0.01" 
+                            data-index="${index}" onfocus="this.select()">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control subtotal" value="${producto.subtotal}"
+                            step="0.01" data-index="${index}">
+                    </td>
+                    <td><button class="btn btn-danger btn-sm btn-quitar-producto" data-index="${index}">Quitar</button></td>
+                </tr>`;
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text(); // Leer la respuesta como texto
-                    throw new Error(`Error del servidor: ${errorText}`);
-                }
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification(result.message, 'success');
-                    setTimeout(() => {
-                        window.location.href = result.redirect;
-                    }, 3000);
-                } else {
-                    showNotification(result.message || 'Error al registrar la compra.', 'danger');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showNotification('Hubo un error al registrar la compra.', 'danger');
+                actualizarTotal();
             }
+
+            // Validar y actualizar cantidad en tiempo real
+            document.addEventListener('input', (event) => {
+                if (event.target.classList.contains('cantidad')) {
+                    const index = event.target.getAttribute('data-index');
+                    const cantidadInput = event.target;
+                    const cantidad = parseFloat(cantidadInput.value);
+                    const producto = productosSeleccionados[index];
+
+                    if (isNaN(cantidad) || cantidad < 1) {
+                        cantidadInput.classList.add('is-invalid');
+                    } else {
+                        cantidadInput.classList.remove('is-invalid');
+                        producto.cantidad = cantidad;
+                        producto.subtotal = producto.cantidad * producto.precio_compra_actual;
+                        actualizarSubtotal(index, producto.subtotal);
+                        actualizarTotal();
+                    }
+                }
+
+                if (event.target.classList.contains('subtotal')) {
+                    const index = event.target.getAttribute('data-index');
+                    const subtotalInput = event.target;
+                    const subtotal = parseFloat(subtotalInput.value);
+                    const producto = productosSeleccionados[index];
+
+                    if (isNaN(subtotal) || subtotal < 0) {
+                        subtotalInput.classList.add('is-invalid');
+                    } else {
+                        subtotalInput.classList.remove('is-invalid');
+                        producto.subtotal = subtotal;
+                        actualizarTotal(); // Mantiene la cantidad fija
+                    }
+                }
+
+                // Validar y aplicar porcentaje de descuento
+                if (event.target.id === 'porcentajeDescuento') {
+                    const porcentajeDescuento = parseFloat(porcentajeDescuentoInput.value);
+                    if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento >
+                        100) {
+                        porcentajeDescuentoInput.classList.add('is-invalid');
+
+                    } else {
+                        porcentajeDescuentoInput.classList.remove('is-invalid');
+                        actualizarTotal();
+                    }
+                }
+            });
+
+
+            // Quitar producto
+            document.addEventListener('click', (event) => {
+                if (event.target.classList.contains('btn-quitar-producto')) {
+                    const index = event.target.getAttribute('data-index');
+                    productosSeleccionados.splice(index, 1);
+                    renderProductos();
+                }
+            });
+
+            function actualizarTotal() {
+                const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + parseFloat(producto
+                        .subtotal),
+                    0);
+                const porcentajeDescuento = parseFloat(porcentajeDescuentoInput.value) || 0;
+
+                if (porcentajeDescuento >= 0 && porcentajeDescuento <= 100) {
+                    const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
+                    const totalConDescuento = totalSinDescuento - descuento;
+
+                    totalCompraInput.value = totalConDescuento.toFixed(2);
+                } else {
+                    totalCompraInput.value = totalSinDescuento.toFixed(2);
+                }
+            }
+
+            function actualizarSubtotal(index, subtotal) {
+                const producto = productosSeleccionados[index];
+                producto.subtotal = parseFloat(subtotal).toFixed(2);
+
+                const subtotalInput = document.querySelector(`.subtotal[data-index="${index}"]`);
+                if (subtotalInput) {
+                    subtotalInput.value = subtotal.toFixed(2);
+                }
+            }
+
+            function showNotification(message, type) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerText = message;
+
+                document.body.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.classList.add('show');
+                }, 10);
+
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    notification.addEventListener('transitionend', () => notification.remove());
+                }, 3000);
+            }
+
+            document.getElementById('finalizarCompra').addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('confirmarCompraModal'));
+                modal.show();
+            });
+
+            document.getElementById('confirmarCompra').addEventListener('click', async function() {
+                const modalElement = document.getElementById('confirmarCompraModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                modalInstance.hide();
+
+                if (!proveedorSeleccionado) {
+                    showNotification('Debe seleccionar un proveedor.', 'danger');
+                    return;
+                }
+
+                if (productosSeleccionados.length === 0) {
+                    showNotification('Debe seleccionar al menos un producto.', 'danger');
+                    return;
+                }
+
+                const porcentajeDescuento = parseInt(document.getElementById('porcentajeDescuento')
+                    .value) || 0;
+
+                if (porcentajeDescuento < 0 || porcentajeDescuento > 100) {
+                    showNotification('El porcentaje de descuento debe estar entre 0 y 100.', 'danger');
+                    return;
+                }
+
+                const data = {
+                    proveedor_id: proveedorSeleccionado.id_proveedor,
+                    fecha_compra: document.getElementById('fechaCompra').value || null,
+                    factura_compra: document.getElementById('compraConFactura').checked ? 1 : 0,
+                    descuento_compra: porcentajeDescuento,
+                    total_compra: parseFloat(document.getElementById('totalCompraInput').value) ||
+                        0,
+                    productos: productosSeleccionados.map(producto => ({
+                        id: producto.id_producto,
+                        cantidad: producto.cantidad,
+                        subtotal: producto.subtotal,
+                        descripcion: producto.descripcion || null,
+                    })),
+                };
+
+                try {
+                    // Usa `await` aquí para esperar la respuesta
+                    const response = await fetch('/compras', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .getAttribute(
+                                    'content'),
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text(); // Leer la respuesta como texto
+                        throw new Error(`Error del servidor: ${errorText}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showNotification(result.message, 'success');
+                        setTimeout(() => {
+                            window.location.href = result.redirect;
+                        }, 3000);
+                    } else {
+                        showNotification(result.message || 'Error al registrar la compra.', 'danger');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showNotification('Hubo un error al registrar la compra.', 'danger');
+                }
+            });
+
         });
     </script>
 @endsection

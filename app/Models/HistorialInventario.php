@@ -10,6 +10,7 @@ class HistorialInventario extends Model
     use HasFactory;
 
     protected $table = 'historial_inventario';
+    protected $primaryKey = 'id_historial';
 
     protected $fillable = [
         'id_producto',

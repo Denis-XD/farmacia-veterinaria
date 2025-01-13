@@ -179,6 +179,7 @@
                                                     <h6>Socio: {{ $venta->socio->nombre_socio ?? 'Sin Socio' }}</h6>
                                                     <h6>Fecha: {{ $venta->fecha_venta }}</h6>
                                                     <h6>Total: Bs {{ number_format($venta->total_venta, 2) }}</h6>
+                                                    <h6>Descuento: {{ $venta->descuento_venta }}%</h6>
                                                     <h6>Crédito: {{ $venta->credito ? 'Sí' : 'No' }}</h6>
                                                     <h6>Servicio: {{ $venta->servicio ? 'Sí' : 'No' }}</h6>
                                                     <h6>Finalizada: {{ $venta->finalizada ? 'Sí' : 'No' }}</h6>

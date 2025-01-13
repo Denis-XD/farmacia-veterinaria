@@ -216,8 +216,11 @@
                 document.getElementById('codigo_barra').value = data.barcode;
 
                 // Descargar el PDF automáticamente
+                const pdfBlob = new Blob([Uint8Array.from(atob(data.pdf_base64), c => c.charCodeAt(0))], {
+                    type: 'application/pdf',
+                });
                 const link = document.createElement('a');
-                link.href = data.pdf_url;
+                link.href = window.URL.createObjectURL(pdfBlob);
                 link.download = `${nombreProducto}-barcode.pdf`;
                 link.click();
 

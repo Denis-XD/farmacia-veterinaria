@@ -88,7 +88,7 @@
                 <tr>
                     <td>{{ $detalle->cantidad_compra }}</td>
                     <td>{{ $detalle->producto->nombre_producto }}</td>
-                    <td>Bs {{ number_format($detalle->producto->precio_compra, 2) }}</td>
+                    <td>Bs {{ number_format($detalle->producto->precio_compra_actual, 2) }}</td>
                     <td>Bs {{ number_format($detalle->subtotal_compra, 2) }}</td>
                 </tr>
                 @php $sumaSubtotales += $detalle->subtotal_compra; @endphp

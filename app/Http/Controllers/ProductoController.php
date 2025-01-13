@@ -87,8 +87,8 @@ class ProductoController extends Controller
             'porcentaje_utilidad' => 'required|numeric|min:0|max:100',
             'precio_compra_actual' => 'required|numeric|min:0',
             'precio_venta_actual' => 'required|numeric|min:0|gte:precio_compra_actual',
-            'stock' => 'required|integer|min:0',
-            'stock_minimo' => 'required|integer|min:0',
+            'stock' => 'required|numeric|min:0',
+            'stock_minimo' => 'required|numeric|min:0',
         ], $messages);
 
         try {
@@ -169,8 +169,8 @@ class ProductoController extends Controller
             'porcentaje_utilidad' => 'required|numeric|min:0|max:100',
             'precio_compra_actual' => 'required|numeric|min:0',
             'precio_venta_actual' => 'required|numeric|min:0|gte:precio_compra_actual',
-            'stock' => 'required|integer|min:0',
-            'stock_minimo' => 'required|integer|min:0',
+            'stock' => 'required|numeric|min:0',
+            'stock_minimo' => 'required|numeric|min:0',
         ], $messages);
 
         try {

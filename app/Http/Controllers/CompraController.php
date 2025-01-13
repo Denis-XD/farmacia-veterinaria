@@ -92,28 +92,24 @@ class CompraController extends Controller
             'proveedor_id' => 'required|exists:proveedor,id_proveedor',
             'productos' => 'required|array|min:1',
             'productos.*.id' => 'required|exists:producto,id_producto',
-            'productos.*.cantidad' => 'required|integer|min:1',
+            'productos.*.cantidad' => 'required|numeric|min:1',
             'productos.*.subtotal' => 'required|numeric|min:0',
             'factura_compra' => 'nullable|boolean',
             'descuento_compra' =>  'required|integer|min:0|max:100',
+            'fecha_compra' => 'nullable|date',
+            'total_compra' => 'required|numeric|min:0',
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Calcular el total de la compra
-            $totalCompra = array_sum(array_column($request->productos, 'subtotal'));
-
-            // Aplicar el porcentaje de descuento si existe
-            if ($request->filled('descuento_compra')) {
-                $descuento = ($totalCompra * $request->descuento_compra) / 100;
-                $totalCompra -= $descuento;
-            }
+            $totalCompra = $request->total_compra;
+            $fechaCompra = $request->fecha_compra ?? Carbon::now();
 
             // Crear la compra
             $compra = Compra::create([
                 'id_proveedor' => $request->proveedor_id,
-                'fecha_compra' => Carbon::now(), // Guardar la fecha de la compra
+                'fecha_compra' => $fechaCompra,
                 'total_compra' => $totalCompra,
                 'descuento_compra' => $request->descuento_compra ?? 0, // Guardar el porcentaje de descuento
                 'factura_compra' => $request->factura_compra ?? 0, // Manejar nulos
@@ -137,7 +133,7 @@ class CompraController extends Controller
                 HistorialInventario::create([
                     'id_producto' => $producto['id'],
                     'stock' => $producto['cantidad'],
-                    'fecha' => now(),
+                    'fecha' => $fechaCompra,
                     'motivo' => 'Compra',
                     'id_transaccion' => $compra->id_compra,
                     'tipo_transaccion' => 'Compra',
@@ -180,6 +176,12 @@ class CompraController extends Controller
     public function edit($id)
     {
         abort_if(Gate::denies('compra_actualizar'), 403);
+
+        $compra = Compra::with(['proveedor', 'detalles.producto'])->findOrFail($id);
+        $proveedores = Proveedor::all();
+        $productos = Producto::all();
+
+        return view('pages.compra_editar', compact('compra', 'proveedores', 'productos'));
     }
 
     /**
@@ -192,6 +194,133 @@ class CompraController extends Controller
     public function update(Request $request, $id)
     {
         abort_if(Gate::denies('compra_actualizar'), 403);
+
+        $request->validate([
+            'proveedor_id' => 'required|exists:proveedor,id_proveedor',
+            'productosEliminados' => 'nullable|array',
+            'productosEliminados.*' => 'exists:detalle_compra,id_detalle_compra',
+            'productos' => 'required|array|min:1',
+            'productos.*.id' => 'required|exists:producto,id_producto',
+            'productos.*.cantidad' => 'required|numeric|min:1',
+            'productos.*.subtotal' => 'required|numeric|min:0',
+            'productos.*.esExistente' => 'required|boolean',
+            'productos.*.modificado' => 'required|boolean',
+            'factura_compra' => 'nullable|boolean',
+            'descuento_compra' => 'required|integer|min:0|max:100',
+            'fecha_compra' => 'nullable|date',
+            'total_compra' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $compra = Compra::findOrFail($id);
+            $fechaCompra = $request->fecha_compra ?? Carbon::now();
+
+            // ** Actualizar información general de la compra **
+            $compra->update([
+                'id_proveedor' => $request->proveedor_id,
+                'fecha_compra' => $fechaCompra,
+                'total_compra' => $request->total_compra,
+                'descuento_compra' => $request->descuento_compra ?? 0,
+                'factura_compra' => $request->factura_compra ?? 0,
+            ]);
+
+            // ** Procesar productos eliminados **
+            if (!empty($request->productosEliminados)) {
+                foreach ($request->productosEliminados as $idDetalle) {
+                    $detalle = DetalleCompra::findOrFail($idDetalle);
+
+                    // Reducir el stock del producto
+                    Producto::where('id_producto', $detalle->id_producto)
+                        ->decrement('stock', $detalle->cantidad_compra);
+
+                    // Eliminar el registro del historial de inventario
+                    HistorialInventario::where('id_producto', $detalle->id_producto)
+                        ->where('id_transaccion', $compra->id_compra)
+                        ->where('tipo_transaccion', 'Compra')
+                        ->delete();
+
+                    // Eliminar el detalle de la compra
+                    $detalle->delete();
+                }
+            }
+
+            // ** Procesar productos existentes y nuevos **
+            foreach ($request->productos as $producto) {
+                if ($producto['esExistente']) {
+                    // Producto existente
+                    $detalle = DetalleCompra::where('id_compra', $compra->id_compra)
+                        ->where('id_producto', $producto['id'])
+                        ->firstOrFail();
+
+                    if ($producto['modificado']) {
+                        // Calcular la diferencia de stock
+                        $diferencia = $producto['cantidad'] - $detalle->cantidad_compra;
+
+                        if ($diferencia != 0) {
+                            // Actualizar el stock del producto
+                            Producto::where('id_producto', $producto['id'])
+                                ->increment('stock', $diferencia);
+
+                            // Actualizar el historial de inventario
+                            $historial = HistorialInventario::where('id_producto', $producto['id'])
+                                ->where('id_transaccion', $compra->id_compra)
+                                ->where('tipo_transaccion', 'Compra')
+                                ->first();
+
+                            if ($historial) {
+                                $historial->update([
+                                    'stock' => $producto['cantidad'],
+                                    'fecha' => $fechaCompra,
+                                ]);
+                            }
+                        }
+                    }
+                    // Actualizar el detalle de la compra
+                    $detalle->update([
+                        'cantidad_compra' => $producto['cantidad'],
+                        'subtotal_compra' => $producto['subtotal'],
+                    ]);
+                } else {
+                    // Producto nuevo
+                    // Crear el detalle de la compra
+                    $compra->detalles()->create([
+                        'id_producto' => $producto['id'],
+                        'descripcion' => $producto['descripcion'] ?? null,
+                        'cantidad_compra' => $producto['cantidad'],
+                        'subtotal_compra' => $producto['subtotal'],
+                    ]);
+
+                    // Incrementar el stock del producto
+                    Producto::where('id_producto', $producto['id'])
+                        ->increment('stock', $producto['cantidad']);
+
+                    // Registrar en el historial de inventario
+                    HistorialInventario::create([
+                        'id_producto' => $producto['id'],
+                        'stock' => $producto['cantidad'],
+                        'fecha' => $fechaCompra,
+                        'motivo' => 'Compra',
+                        'id_transaccion' => $compra->id_compra,
+                        'tipo_transaccion' => 'Compra',
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Compra actualizada correctamente.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la compra: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

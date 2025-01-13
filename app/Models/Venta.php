@@ -17,6 +17,7 @@ class Venta extends Model
         'id_socio',
         'fecha_venta',
         'total_venta',
+        'descuento_venta',
         'credito',
         'servicio',
         'finalizada',
