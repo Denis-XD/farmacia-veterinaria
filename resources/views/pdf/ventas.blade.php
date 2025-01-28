@@ -67,7 +67,7 @@
         </div>
     </div>
 
-    <h2>Codigo de venta: {{ $venta->id_venta }}</h2>
+    <h2>Numero de venta: {{ $venta->id_venta }}</h2>
     <div class="header-left">
         <p><strong>Atendido por:</strong> {{ $venta->usuario->nombre }}</p>
         <p><strong>Socio:</strong> {{ $venta->socio->nombre_socio ?? 'Sin Socio' }}</p>

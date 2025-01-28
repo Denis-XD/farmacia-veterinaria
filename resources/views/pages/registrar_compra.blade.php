@@ -148,26 +148,6 @@
                 <button class="btn btn-success mt-2 mt-md-0" id="finalizarCompra">Finalizar Compra</button>
             </div>
         </div>
-
-        <!-- Modal Confirmación -->
-        <div class="modal fade" id="confirmarCompraModal" tabindex="-1" aria-labelledby="confirmarCompraModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header bg-secondary text-white">
-                        <h5 class="modal-title" id="confirmarCompraModalLabel">Confirmar Compra</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        ¿Está seguro de finalizar esta compra?
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" id="confirmarCompra">Confirmar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
     <style>
         /* Estilos básicos para las notificaciones */
@@ -506,15 +486,7 @@
                 }, 3000);
             }
 
-            document.getElementById('finalizarCompra').addEventListener('click', function() {
-                const modal = new bootstrap.Modal(document.getElementById('confirmarCompraModal'));
-                modal.show();
-            });
-
-            document.getElementById('confirmarCompra').addEventListener('click', async function() {
-                const modalElement = document.getElementById('confirmarCompraModal');
-                const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                modalInstance.hide();
+            document.getElementById('finalizarCompra').addEventListener('click', async function() {
 
                 if (!proveedorSeleccionado) {
                     showNotification('Debe seleccionar un proveedor.', 'danger');
@@ -573,7 +545,7 @@
                         showNotification(result.message, 'success');
                         setTimeout(() => {
                             window.location.href = result.redirect;
-                        }, 3000);
+                        }, 2000);
                     } else {
                         showNotification(result.message || 'Error al registrar la compra.', 'danger');
                     }

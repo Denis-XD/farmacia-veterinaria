@@ -66,7 +66,7 @@
             <h1>Farmacia Veterinaria ALVA</h1>
         </div>
     </div>
-    <h2>Código de compra: {{ $compra->id_compra }}</h2>
+    <h2>Numero de compra: {{ $compra->id_compra }}</h2>
     <div class="header-left">
         <p><strong>Proveedor:</strong> {{ $compra->proveedor->nombre_proveedor }}</p>
         <p><strong>Fecha:</strong> {{ $compra->fecha_compra->format('d/m/Y') }}</p>

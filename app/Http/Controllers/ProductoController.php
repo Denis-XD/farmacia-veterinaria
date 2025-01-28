@@ -350,20 +350,17 @@ class ProductoController extends Controller
             return redirect()->back()->with('error', 'Las fechas no son válidas. La fecha de inicio debe ser menor o igual a la fecha de fin.');
         }
 
-        // Obtener los productos con su historial y paginación
+        // Obtener los productos paginados
         $productosPaginados = Producto::with(['historialPrecios', 'historialInventario'])->paginate(10);
 
-        // Procesar los datos para cada producto dentro de la paginación
+        // Calcular los datos para la página actual
         $inventario = collect($productosPaginados->items())->map(function ($producto) use ($fechaInicio, $fechaFin) {
-            // Calcular el stock en la fecha fin
             $stockHistorial = $producto->historialInventario()
                 ->whereDate('fecha', '<=', $fechaFin)
                 ->orderBy('fecha', 'desc')
                 ->first();
-
             $stock = $stockHistorial ? $stockHistorial->stock : 0;
 
-            // Obtener precios en el rango de fechas
             $preciosHistorial = $producto->historialPrecios()
                 ->whereDate('fecha_inicio', '<=', $fechaFin)
                 ->where(function ($query) use ($fechaInicio) {
@@ -375,10 +372,8 @@ class ProductoController extends Controller
 
             $precio = 0;
             if ($preciosHistorial->count() == 1) {
-                // Si solo hay un precio en el rango
                 $precio = $preciosHistorial->first()->precio_venta;
             } elseif ($preciosHistorial->count() > 1) {
-                // Si hay más de un precio, calcular el promedio de los dos más recientes
                 $precio = $preciosHistorial->take(2)->avg('precio_venta');
             }
 
@@ -391,15 +386,43 @@ class ProductoController extends Controller
             ];
         });
 
-        // Calcular el valor total
-        $totalValor = $inventario->sum('valor');
+        // Calcular el valor total para la paginación actual
+        $totalValorPagina = $inventario->sum('valor');
+
+        // Calcular el valor total global
+        $totalValorGlobal = Producto::with(['historialPrecios', 'historialInventario'])->get()->reduce(function ($carry, $producto) use ($fechaInicio, $fechaFin) {
+            $stockHistorial = $producto->historialInventario()
+                ->whereDate('fecha', '<=', $fechaFin)
+                ->orderBy('fecha', 'desc')
+                ->first();
+            $stock = $stockHistorial ? $stockHistorial->stock : 0;
+
+            $preciosHistorial = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '<=', $fechaFin)
+                ->where(function ($query) use ($fechaInicio) {
+                    $query->whereNull('fecha_fin')
+                        ->orWhereDate('fecha_fin', '>=', $fechaInicio);
+                })
+                ->orderBy('fecha_inicio', 'desc')
+                ->get();
+
+            $precio = 0;
+            if ($preciosHistorial->count() == 1) {
+                $precio = $preciosHistorial->first()->precio_venta;
+            } elseif ($preciosHistorial->count() > 1) {
+                $precio = $preciosHistorial->take(2)->avg('precio_venta');
+            }
+
+            return $carry + ($stock * $precio);
+        }, 0);
 
         return view('pages.productos_inventario', [
             'inventario' => $inventario,
             'productos' => $productosPaginados,
             'fechaInicio' => $fechaInicio,
             'fechaFin' => $fechaFin,
-            'totalValor' => $totalValor,
+            'totalValor' => $totalValorPagina,
+            'totalValorGlobal' => $totalValorGlobal,
         ]);
     }
 

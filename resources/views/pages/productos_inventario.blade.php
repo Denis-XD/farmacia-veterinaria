@@ -57,7 +57,8 @@
         </form>
 
         <div class="d-flex flex-column flex-md-row align-items-md-center align-items-start mb-3">
-            <h5 class="mb-2 mb-md-0">Total valor: Bs {{ number_format($totalValor, 2) }}</h5>
+            <h5 class="mb-2 mb-md-0">Total valor Global: Bs {{ number_format($totalValorGlobal, 2) }}</h5>
+            <h5 class="mb-2 mb-md-0 ms-md-3">Total valor Actual: Bs {{ number_format($totalValor, 2) }}</h5>
             <a href="{{ route('productos.descargarInventarioPdf', ['fechaInicio' => $fechaInicio, 'fechaFin' => $fechaFin]) }}"
                 class="btn btn-danger ms-auto">
                 Descargar en PDF
