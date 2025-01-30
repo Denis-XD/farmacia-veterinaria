@@ -362,27 +362,48 @@
 
                 tbody.innerHTML = '';
                 if (resultados.length > 0) {
+                    // Si hay un único resultado y el input proviene de un código de barras (numérico)
+                    if (resultados.length === 1 && !isNaN(buscar) && resultados[0].codigo_barra &&
+                        resultados[0].codigo_barra.toLowerCase() === buscar) {
+                        const producto = resultados[0];
+                        if (!productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
+                            añadirProducto(producto); // Añade el producto automáticamente
+                        } else {
+                            showNotification('El producto ya está añadido.', 'danger');
+                        }
+
+                        // Limpia el campo de búsqueda con un pequeño retardo
+                        setTimeout(() => {
+                            buscarProductoInput.value =
+                                ''; // Limpia el campo de búsqueda completamente
+                        }, 10);
+
+                        tabla.classList.add('d-none');
+                        tbody.innerHTML = '';
+                        return; // Termina la función aquí
+                    }
+
+                    // Si hay más de un resultado, muestra la tabla
                     tabla.classList.remove('d-none');
                     resultados.forEach(producto => {
                         tbody.innerHTML += `
-                        <tr>
-                            <td>${producto.id_producto}</td>
-                            <td>${producto.codigo_barra || 'N/A'}</td>
-                            <td>${producto.nombre_producto}</td>
-                            <td>${producto.stock}</td>
-                            <td>
-                                <button class="btn btn-success btn-sm btn-choose-producto" 
-                                    data-id="${producto.id_producto}">Añadir</button>
-                            </td>
-                        </tr>`;
+                            <tr>
+                                <td>${producto.id_producto}</td>
+                                <td>${producto.codigo_barra || 'N/A'}</td>
+                                <td>${producto.nombre_producto}</td>
+                                <td>${producto.stock}</td>
+                                <td>
+                                    <button class="btn btn-success btn-sm btn-choose-producto" 
+                                        data-id="${producto.id_producto}">Añadir</button>
+                                </td>
+                            </tr>`;
                     });
                 } else {
                     tabla.classList.add('d-none');
-                    //showNotification('No se encontraron productos.', 'danger');
                 }
             });
 
-            // Manejar clic para añadir productos
+            // Manejar clic para añadir productos manualmente
             document.addEventListener('click', (event) => {
                 if (event.target.classList.contains('btn-choose-producto')) {
                     const idProducto = parseInt(event.target.getAttribute('data-id'));
@@ -394,6 +415,10 @@
                     }
 
                     añadirProducto(producto);
+                    setTimeout(() => {
+                        buscarProductoInput.value =
+                            ''; // Limpia el campo después de añadir desde la tabla
+                    }, 10);
                 }
             });
 
@@ -420,20 +445,20 @@
 
                 productosSeleccionados.forEach((producto, index) => {
                     tbody.innerHTML += `
-                <tr>
-                    <td>${producto.nombre_producto}</td>
-                    <td>Bs ${producto.precio_venta_actual}</td>
-                    <td>
-                        <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
-                            step="0.01" 
-                            data-index="${index}" onfocus="this.select()">
-                    </td>
-                    <td>
-                        <input type="number" class="form-control subtotal" value="${producto.subtotal}"
-                            step="0.01" data-index="${index}">
-                    </td>
-                    <td><button class="btn btn-danger btn-sm btn-quitar-producto" data-index="${index}">Quitar</button></td>
-                </tr>`;
+                        <tr>
+                            <td>${producto.nombre_producto}</td>
+                            <td>Bs ${producto.precio_venta_actual}</td>
+                            <td>
+                                <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
+                                    step="0.01" 
+                                    data-index="${index}" onfocus="this.select()">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control subtotal" value="${producto.subtotal}"
+                                    step="0.01" data-index="${index}">
+                            </td>
+                            <td><button class="btn btn-danger btn-sm btn-quitar-producto" data-index="${index}">Quitar</button></td>
+                        </tr>`;
                 });
 
                 actualizarTotal();
