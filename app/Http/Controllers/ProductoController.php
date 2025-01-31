@@ -338,6 +338,30 @@ class ProductoController extends Controller
         return view('pages.producto_kardex', compact('producto', 'kardex'));
     }
 
+    public function kardex2($id, $fechaFin)
+    {
+        // Validar que el producto existe
+        $producto = Producto::findOrFail($id);
+
+        // Obtener movimientos hasta la fecha fin, ordenados por fecha ascendente
+        $movimientos = HistorialInventario::where('id_producto', $id)
+            ->whereDate('fecha', '<=', $fechaFin) // Solo considerar movimientos hasta la fecha fin
+            ->orderBy('fecha', 'asc')
+            ->get();
+
+        // Calcular el saldo acumulativo hasta la fecha más cercana a la fecha fin
+        $saldo = 0;
+        foreach ($movimientos as $movimiento) {
+            if ($movimiento->motivo === 'Compra' || $movimiento->motivo === 'Ajuste Positivo') {
+                $saldo += $movimiento->stock; // Entrada
+            } elseif ($movimiento->motivo === 'Venta' || $movimiento->motivo === 'Ajuste Negativo') {
+                $saldo -= $movimiento->stock; // Salida
+            }
+        }
+
+        return $saldo; // Devolver el saldo final hasta la fecha fin
+    }
+
     public function inventario(Request $request)
     {
         abort_if(Gate::denies('producto_inventario'), 403);
@@ -351,67 +375,32 @@ class ProductoController extends Controller
         }
 
         // Obtener los productos paginados
-        $productosPaginados = Producto::with(['historialPrecios', 'historialInventario'])->paginate(10);
+        $productosPaginados = Producto::with(['historialPrecios'])->paginate(10);
 
         // Calcular los datos para la página actual
         $inventario = collect($productosPaginados->items())->map(function ($producto) use ($fechaInicio, $fechaFin) {
-            $stockHistorial = $producto->historialInventario()
-                ->whereDate('fecha', '<=', $fechaFin)
-                ->orderBy('fecha', 'desc')
-                ->first();
-            $stock = $stockHistorial ? $stockHistorial->stock : 0;
+            // Obtener el saldo del producto desde el método kardex2
+            $stock = $this->kardex2($producto->id_producto, $fechaFin);
 
-            $preciosHistorial = $producto->historialPrecios()
-                ->whereDate('fecha_inicio', '<=', $fechaFin)
-                ->where(function ($query) use ($fechaInicio) {
-                    $query->whereNull('fecha_fin')
-                        ->orWhereDate('fecha_fin', '>=', $fechaInicio);
-                })
-                ->orderBy('fecha_inicio', 'desc')
-                ->get();
-
-            $precio = 0;
-            if ($preciosHistorial->count() == 1) {
-                $precio = $preciosHistorial->first()->precio_venta;
-            } elseif ($preciosHistorial->count() > 1) {
-                $precio = $preciosHistorial->take(2)->avg('precio_venta');
-            }
+            // Obtener precios en el rango de fechas
+            $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
 
             return [
                 'descripcion' => $producto->nombre_producto,
                 'unidad' => $producto->unidad,
-                'cantidad' => $stock,
+                'cantidad' => $stock, // Ahora usamos el stock obtenido desde el kardex2
                 'precio_unitario' => $precio,
                 'valor' => $stock * $precio,
             ];
         });
 
-        // Calcular el valor total para la paginación actual
+        // Calcular el valor total de la página actual
         $totalValorPagina = $inventario->sum('valor');
 
-        // Calcular el valor total global
-        $totalValorGlobal = Producto::with(['historialPrecios', 'historialInventario'])->get()->reduce(function ($carry, $producto) use ($fechaInicio, $fechaFin) {
-            $stockHistorial = $producto->historialInventario()
-                ->whereDate('fecha', '<=', $fechaFin)
-                ->orderBy('fecha', 'desc')
-                ->first();
-            $stock = $stockHistorial ? $stockHistorial->stock : 0;
-
-            $preciosHistorial = $producto->historialPrecios()
-                ->whereDate('fecha_inicio', '<=', $fechaFin)
-                ->where(function ($query) use ($fechaInicio) {
-                    $query->whereNull('fecha_fin')
-                        ->orWhereDate('fecha_fin', '>=', $fechaInicio);
-                })
-                ->orderBy('fecha_inicio', 'desc')
-                ->get();
-
-            $precio = 0;
-            if ($preciosHistorial->count() == 1) {
-                $precio = $preciosHistorial->first()->precio_venta;
-            } elseif ($preciosHistorial->count() > 1) {
-                $precio = $preciosHistorial->take(2)->avg('precio_venta');
-            }
+        // Calcular el valor total global usando la misma lógica
+        $totalValorGlobal = Producto::with(['historialPrecios'])->get()->reduce(function ($carry, $producto) use ($fechaInicio, $fechaFin) {
+            $stock = $this->kardex2($producto->id_producto, $fechaFin);
+            $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
 
             return $carry + ($stock * $precio);
         }, 0);
@@ -426,54 +415,132 @@ class ProductoController extends Controller
         ]);
     }
 
+    private function obtenerPrecioProducto($producto, $fechaInicio, $fechaFin)
+    {
+        // Obtener precios en el rango de fechas
+        $preciosHistorial = $producto->historialPrecios()
+            ->whereDate('fecha_inicio', '>=', $fechaInicio)
+            ->whereDate('fecha_inicio', '<=', $fechaFin)
+            ->where(function ($query) use ($fechaInicio, $fechaFin) {
+                $query->whereNull('fecha_fin')
+                    ->orWhereDate('fecha_fin', '<=', $fechaFin)
+                    ->orWhereDate('fecha_fin', '>=', $fechaInicio);
+            })
+            ->orderBy('fecha_inicio', 'desc')
+            ->get();
+
+        $precio = 0;
+
+        if ($preciosHistorial->count() >= 2) {
+            // Si hay al menos dos registros dentro del rango, sacar el promedio de los dos últimos
+            $precio = $preciosHistorial->take(2)->avg('precio_venta');
+        } elseif ($preciosHistorial->count() == 1) {
+            // Si solo hay un precio en el rango, usar ese
+            $precio = $preciosHistorial->first()->precio_venta;
+        } else {
+            // Si no hay registros en el rango, buscar el más cercano antes de la fechaInicio o después de fechaFin
+            $precioAnterior = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '<', $fechaInicio)
+                ->orderBy('fecha_inicio', 'desc')
+                ->first();
+
+            $precioPosterior = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '>', $fechaFin)
+                ->orderBy('fecha_inicio', 'asc')
+                ->first();
+
+            if ($precioAnterior && $precioPosterior) {
+                // Tomar el más cercano en tiempo
+                $precio = abs(strtotime($precioAnterior->fecha_inicio) - strtotime($fechaInicio)) <
+                    abs(strtotime($precioPosterior->fecha_inicio) - strtotime($fechaFin))
+                    ? $precioAnterior->precio_venta
+                    : $precioPosterior->precio_venta;
+            } elseif ($precioAnterior) {
+                // Si solo hay un precio anterior, tomar ese
+                $precio = $precioAnterior->precio_venta;
+            } elseif ($precioPosterior) {
+                // Si solo hay un precio posterior, tomar ese
+                $precio = $precioPosterior->precio_venta;
+            }
+        }
+
+        return $precio;
+    }
+
     public function descargarInventarioPdf(Request $request)
     {
         // Obtener las fechas seleccionadas o valores predeterminados
         $fechaInicio = $request->input('fechaInicio', Carbon::now()->subMonth()->toDateString());
         $fechaFin = $request->input('fechaFin', Carbon::now()->toDateString());
 
-        // Obtener los datos para el inventario
-        $productos = Producto::with(['historialPrecios', 'historialInventario'])->get();
+        // Obtener todos los productos
+        $productos = Producto::with(['historialPrecios'])->get();
 
+        // Procesar cada producto
         $inventario = $productos->map(function ($producto) use ($fechaInicio, $fechaFin) {
-            $stockHistorial = $producto->historialInventario()
-                ->whereDate('fecha', '<=', $fechaFin)
-                ->orderBy('fecha', 'desc')
-                ->first();
+            // Obtener el saldo del producto desde el método kardex2
+            $stock = $this->kardex2($producto->id_producto, $fechaFin);
 
-            $stock = $stockHistorial ? $stockHistorial->stock : 0;
-
+            // Obtener precios en el rango de fechas
             $preciosHistorial = $producto->historialPrecios()
+                ->whereDate('fecha_inicio', '>=', $fechaInicio)
                 ->whereDate('fecha_inicio', '<=', $fechaFin)
-                ->where(function ($query) use ($fechaInicio) {
+                ->where(function ($query) use ($fechaInicio, $fechaFin) {
                     $query->whereNull('fecha_fin')
+                        ->orWhereDate('fecha_fin', '<=', $fechaFin)
                         ->orWhereDate('fecha_fin', '>=', $fechaInicio);
                 })
                 ->orderBy('fecha_inicio', 'desc')
                 ->get();
 
             $precio = 0;
-            if ($preciosHistorial->count() == 1) {
-                // Si solo hay un precio en el rango
-                $precio = $preciosHistorial->first()->precio_venta;
-            } elseif ($preciosHistorial->count() > 1) {
-                // Si hay más de un precio, calcular el promedio de los dos más recientes
+
+            if ($preciosHistorial->count() >= 2) {
+                // Si hay al menos dos registros dentro del rango, promediar los dos últimos
                 $precio = $preciosHistorial->take(2)->avg('precio_venta');
+            } elseif ($preciosHistorial->count() == 1) {
+                // Si solo hay un precio en el rango, usar ese
+                $precio = $preciosHistorial->first()->precio_venta;
+            } else {
+                // Buscar el precio más cercano fuera del rango si no hay registros
+                $precioAnterior = $producto->historialPrecios()
+                    ->whereDate('fecha_inicio', '<', $fechaInicio)
+                    ->orderBy('fecha_inicio', 'desc')
+                    ->first();
+
+                $precioPosterior = $producto->historialPrecios()
+                    ->whereDate('fecha_inicio', '>', $fechaFin)
+                    ->orderBy('fecha_inicio', 'asc')
+                    ->first();
+
+                if ($precioAnterior && $precioPosterior) {
+                    // Seleccionar el precio más cercano a la fecha de consulta
+                    $precio = abs(strtotime($precioAnterior->fecha_inicio) - strtotime($fechaInicio)) <
+                        abs(strtotime($precioPosterior->fecha_inicio) - strtotime($fechaFin))
+                        ? $precioAnterior->precio_venta
+                        : $precioPosterior->precio_venta;
+                } elseif ($precioAnterior) {
+                    $precio = $precioAnterior->precio_venta;
+                } elseif ($precioPosterior) {
+                    $precio = $precioPosterior->precio_venta;
+                }
             }
 
             return [
                 'descripcion' => $producto->nombre_producto,
                 'unidad' => $producto->unidad,
-                'cantidad' => $stock,
+                'cantidad' => $stock, // Ahora usamos el stock obtenido desde el kardex2
                 'precio_unitario' => $precio,
                 'valor' => $stock * $precio,
             ];
         });
 
+        // Calcular el valor total del inventario global
         $totalValor = $inventario->sum('valor');
 
-        // Generar PDF
+        // Generar PDF con los datos del inventario
         $pdf = PDF::loadView('pdf.inventario_pdf', compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor'));
+
         return $pdf->download('inventario_' . $fechaInicio . '_al_' . $fechaFin . '.pdf');
     }
 

@@ -581,6 +581,7 @@
                     } else {
                         subtotalInput.classList.remove('is-invalid');
                         producto.subtotal = subtotal;
+                        producto.modificado = true;
                         actualizarTotal(); // Mantiene la cantidad fija
                     }
                 }
