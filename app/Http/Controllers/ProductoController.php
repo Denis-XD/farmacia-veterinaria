@@ -418,7 +418,7 @@ class ProductoController extends Controller
     private function obtenerPrecioProducto($producto, $fechaInicio, $fechaFin)
     {
         // Obtener precios en el rango de fechas
-        $preciosHistorial = $producto->historialPrecios()
+        $preciosHistorial = $producto->historialPreciosCompra()
             ->whereDate('fecha_inicio', '>=', $fechaInicio)
             ->whereDate('fecha_inicio', '<=', $fechaFin)
             ->where(function ($query) use ($fechaInicio, $fechaFin) {
@@ -433,18 +433,18 @@ class ProductoController extends Controller
 
         if ($preciosHistorial->count() >= 2) {
             // Si hay al menos dos registros dentro del rango, sacar el promedio de los dos últimos
-            $precio = $preciosHistorial->take(2)->avg('precio_venta');
+            $precio = $preciosHistorial->take(2)->avg('precio_compra');
         } elseif ($preciosHistorial->count() == 1) {
             // Si solo hay un precio en el rango, usar ese
-            $precio = $preciosHistorial->first()->precio_venta;
+            $precio = $preciosHistorial->first()->precio_compra;
         } else {
             // Si no hay registros en el rango, buscar el más cercano antes de la fechaInicio o después de fechaFin
-            $precioAnterior = $producto->historialPrecios()
+            $precioAnterior = $producto->historialPreciosCompra()
                 ->whereDate('fecha_inicio', '<', $fechaInicio)
                 ->orderBy('fecha_inicio', 'desc')
                 ->first();
 
-            $precioPosterior = $producto->historialPrecios()
+            $precioPosterior = $producto->historialPreciosCompra()
                 ->whereDate('fecha_inicio', '>', $fechaFin)
                 ->orderBy('fecha_inicio', 'asc')
                 ->first();
@@ -453,14 +453,14 @@ class ProductoController extends Controller
                 // Tomar el más cercano en tiempo
                 $precio = abs(strtotime($precioAnterior->fecha_inicio) - strtotime($fechaInicio)) <
                     abs(strtotime($precioPosterior->fecha_inicio) - strtotime($fechaFin))
-                    ? $precioAnterior->precio_venta
-                    : $precioPosterior->precio_venta;
+                    ? $precioAnterior->precio_compra
+                    : $precioPosterior->precio_compra;
             } elseif ($precioAnterior) {
                 // Si solo hay un precio anterior, tomar ese
-                $precio = $precioAnterior->precio_venta;
+                $precio = $precioAnterior->precio_compra;
             } elseif ($precioPosterior) {
                 // Si solo hay un precio posterior, tomar ese
-                $precio = $precioPosterior->precio_venta;
+                $precio = $precioPosterior->precio_compra;
             }
         }
 
@@ -482,7 +482,7 @@ class ProductoController extends Controller
             $stock = $this->kardex2($producto->id_producto, $fechaFin);
 
             // Obtener precios en el rango de fechas
-            $preciosHistorial = $producto->historialPrecios()
+            $preciosHistorial = $producto->historialPreciosCompra()
                 ->whereDate('fecha_inicio', '>=', $fechaInicio)
                 ->whereDate('fecha_inicio', '<=', $fechaFin)
                 ->where(function ($query) use ($fechaInicio, $fechaFin) {
@@ -497,18 +497,18 @@ class ProductoController extends Controller
 
             if ($preciosHistorial->count() >= 2) {
                 // Si hay al menos dos registros dentro del rango, promediar los dos últimos
-                $precio = $preciosHistorial->take(2)->avg('precio_venta');
+                $precio = $preciosHistorial->take(2)->avg('precio_compra');
             } elseif ($preciosHistorial->count() == 1) {
                 // Si solo hay un precio en el rango, usar ese
-                $precio = $preciosHistorial->first()->precio_venta;
+                $precio = $preciosHistorial->first()->precio_compra;
             } else {
                 // Buscar el precio más cercano fuera del rango si no hay registros
-                $precioAnterior = $producto->historialPrecios()
+                $precioAnterior = $producto->historialPreciosCompra()
                     ->whereDate('fecha_inicio', '<', $fechaInicio)
                     ->orderBy('fecha_inicio', 'desc')
                     ->first();
 
-                $precioPosterior = $producto->historialPrecios()
+                $precioPosterior = $producto->historialPreciosCompra()
                     ->whereDate('fecha_inicio', '>', $fechaFin)
                     ->orderBy('fecha_inicio', 'asc')
                     ->first();
@@ -517,12 +517,12 @@ class ProductoController extends Controller
                     // Seleccionar el precio más cercano a la fecha de consulta
                     $precio = abs(strtotime($precioAnterior->fecha_inicio) - strtotime($fechaInicio)) <
                         abs(strtotime($precioPosterior->fecha_inicio) - strtotime($fechaFin))
-                        ? $precioAnterior->precio_venta
-                        : $precioPosterior->precio_venta;
+                        ? $precioAnterior->precio_compra
+                        : $precioPosterior->precio_compra;
                 } elseif ($precioAnterior) {
-                    $precio = $precioAnterior->precio_venta;
+                    $precio = $precioAnterior->precio_compra;
                 } elseif ($precioPosterior) {
-                    $precio = $precioPosterior->precio_venta;
+                    $precio = $precioPosterior->precio_compra;
                 }
             }
 

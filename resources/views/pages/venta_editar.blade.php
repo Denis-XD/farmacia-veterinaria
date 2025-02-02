@@ -439,8 +439,7 @@
                 tbody.innerHTML = '';
                 if (resultados.length > 0) {
                     // Si hay un único resultado y el input proviene de un código de barras (numérico)
-                    if (resultados.length === 1 && !isNaN(buscar) && resultados[0].codigo_barra &&
-                        resultados[0].codigo_barra.toLowerCase() === buscar) {
+                    if (resultados.length === 1) {
                         const producto = resultados[0];
                         if (!productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
                             añadirProducto(producto); // Añade el producto automáticamente
@@ -549,7 +548,7 @@
                     const cantidad = parseFloat(cantidadInput.value);
                     const producto = productosSeleccionados[index];
 
-                    if (isNaN(cantidad) || cantidad < 1 || cantidad > producto.stock) {
+                    if (isNaN(cantidad) || cantidad <= 0 || cantidad > producto.stock) {
                         cantidadInput.classList.add('is-invalid');
                     } else {
                         cantidadInput.classList.remove('is-invalid');

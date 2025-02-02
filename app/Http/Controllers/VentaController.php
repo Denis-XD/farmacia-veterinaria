@@ -100,7 +100,7 @@ class VentaController extends Controller
         $request->validate([
             'productos' => 'required|array|min:1',
             'productos.*.id' => 'required|exists:producto,id_producto',
-            'productos.*.cantidad' => 'required|numeric|min:1',
+            'productos.*.cantidad' => 'required|numeric|min:0',
             'productos.*.subtotal' => 'required|numeric|min:0',
             'total_venta' => 'required|numeric|min:0',
             'monto_pagado' => 'required|numeric|min:0',
@@ -231,7 +231,7 @@ class VentaController extends Controller
             'finalizada' => 'required|boolean',
             'productos' => 'required|array|min:1',
             'productos.*.id' => 'required|exists:producto,id_producto',
-            'productos.*.cantidad' => 'required|numeric|min:1',
+            'productos.*.cantidad' => 'required|numeric|min:0',
             'productos.*.subtotal' => 'required|numeric|min:0',
             'productos.*.esExistente' => 'required|boolean',
             'productos.*.modificado' => 'required|boolean',
