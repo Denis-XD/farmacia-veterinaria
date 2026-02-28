@@ -78,14 +78,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($inventario as $index => $item)
+                    {{-- DESPUÉS --}}
+                    @forelse ($productos as $producto)
                         <tr>
                             <td>{{ ($productos->currentPage() - 1) * $productos->perPage() + $loop->iteration }}</td>
-                            <td>{{ $item['descripcion'] }}</td>
-                            <td>{{ $item['unidad'] }}</td>
-                            <td>{{ $item['cantidad'] }}</td>
-                            <td>Bs {{ number_format($item['precio_unitario'], 2) }}</td>
-                            <td>Bs {{ number_format($item['valor'], 2) }}</td>
+                            <td>{{ $producto->nombre_producto }}</td>
+                            <td>{{ $producto->unidad }}</td>
+                            <td>{{ $producto->stock_kardex }}</td>
+                            <td>Bs {{ number_format($producto->precio_kardex, 2) }}</td>
+                            <td>Bs {{ number_format($producto->valor_kardex, 2) }}</td>
                         </tr>
                     @empty
                         <tr>

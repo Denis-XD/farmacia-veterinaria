@@ -57,6 +57,7 @@ class PermissionSeeder extends Seeder
             'producto_inventario',
             'producto_actualizar',
             'producto_eliminar',
+            'producto_ajustar',
 
             'compra_listar',
             'compra_registrar',

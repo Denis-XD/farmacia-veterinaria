@@ -300,38 +300,77 @@ class ProductoController extends Controller
 
         // Calcular el saldo acumulativo
         $saldo = 0;
+        // DESPUÉS
         $kardex = $movimientos->map(function ($movimiento) use (&$saldo) {
             $detalle = $movimiento->motivo;
 
-            // Obtener detalles específicos según el tipo de transacción
+            // Detalles específicos por tipo de transacción
             if ($movimiento->tipo_transaccion === 'Compra' && $movimiento->id_transaccion) {
-                $compra = Compra::find($movimiento->id_transaccion);
+                $compra  = Compra::find($movimiento->id_transaccion);
                 $detalle = $compra && $compra->proveedor
                     ? 'Proveedor: ' . $compra->proveedor->nombre_proveedor
                     : 'Proveedor desconocido';
             } elseif ($movimiento->tipo_transaccion === 'Venta' && $movimiento->id_transaccion) {
-                $venta = Venta::find($movimiento->id_transaccion);
+                $venta   = Venta::find($movimiento->id_transaccion);
                 $detalle = $venta
                     ? ($venta->socio
                         ? 'Socio: ' . $venta->socio->nombre_socio
                         : 'Venta sin socio')
                     : 'Venta desconocida';
+            } elseif ($movimiento->tipo_transaccion === 'Ajuste') {
+                // El detalle es el motivo libre del usuario;
+                // el tipo visible en la tabla será "Ajuste Positivo" o "Ajuste Negativo"
+                $detalle = $movimiento->motivo;
             }
 
-            // Actualizar el saldo acumulativo
-            if ($movimiento->motivo === 'Compra' || $movimiento->motivo === 'Ajuste Positivo') {
-                $saldo += $movimiento->stock; // Entrada
-            } elseif ($movimiento->motivo === 'Venta' || $movimiento->motivo === 'Ajuste Negativo') {
-                $saldo -= $movimiento->stock; // Salida
+            // ✅ Usar tipo_transaccion + motivo default para determinar si es entrada o salida
+            // — Compra o ajuste positivo (el motivo default sigue siendo 'Ajuste Positivo')
+            $esEntrada = $movimiento->tipo_transaccion === 'Compra'
+                || ($movimiento->tipo_transaccion === 'Ajuste' && $movimiento->motivo === 'Ajuste Positivo');
+
+            // — Venta o ajuste negativo (el motivo default sigue siendo 'Ajuste Negativo')
+            $esSalida  = $movimiento->tipo_transaccion === 'Venta'
+                || ($movimiento->tipo_transaccion === 'Ajuste' && $movimiento->motivo === 'Ajuste Negativo');
+
+            // ✅ Pero si el usuario ingresó un motivo personalizado, leer el motivo guardado
+            //    en storeAjuste() guardamos: si positivo => motivo del usuario (o 'Ajuste Positivo')
+            //    necesitamos saber la dirección — la guardamos en tipo_transaccion como 'Ajuste'
+            //    pero no sabemos si fue + o - solo con eso.
+            //    Solución: comparar con los defaults; si no coincide, buscar por eliminación
+            //    usando que storeAjuste guarda 'Ajuste' en tipo_transaccion siempre,
+            //    y el motivo puede ser cualquier texto.
+            //    → La dirección real la detectamos porque en storeAjuste SOLO llamamos
+            //      increment (positivo) o decrement (negativo). Necesitamos un campo extra
+            //      OR reutilizar el campo motivo con prefijo. Ver nota abajo.
+            //
+            //    SOLUCIÓN LIMPIA: en storeAjuste guardar el tipo de ajuste en tipo_transaccion:
+            //    'Ajuste Positivo' o 'Ajuste Negativo' — así kardex() siempre puede leerlo.
+
+            $esEntrada = in_array($movimiento->tipo_transaccion, ['Compra', 'Ajuste Positivo']);
+            $esSalida  = in_array($movimiento->tipo_transaccion, ['Venta',  'Ajuste Negativo']);
+
+            if ($esEntrada) {
+                $saldo += $movimiento->stock;
+            } elseif ($esSalida) {
+                $saldo -= $movimiento->stock;
             }
+
+            // Etiqueta legible para la columna "Tipo"
+            $tipoLabel = match ($movimiento->tipo_transaccion) {
+                'Compra'          => 'Compra',
+                'Venta'           => 'Venta',
+                'Ajuste Positivo' => 'Ajuste Positivo',
+                'Ajuste Negativo' => 'Ajuste Negativo',
+                default           => $movimiento->tipo_transaccion,
+            };
 
             return [
-                'fecha' => $movimiento->fecha->toDateTimeString(),
-                'tipo' => $movimiento->motivo,
+                'fecha'   => $movimiento->fecha->toDateTimeString(),
+                'tipo'    => $tipoLabel,
                 'detalle' => $detalle,
-                'entrada' => in_array($movimiento->motivo, ['Compra', 'Ajuste Positivo']) ? $movimiento->stock : 0,
-                'salida' => in_array($movimiento->motivo, ['Venta', 'Ajuste Negativo']) ? $movimiento->stock : 0,
-                'saldo' => $saldo,
+                'entrada' => $esEntrada ? $movimiento->stock : 0,
+                'salida'  => $esSalida  ? $movimiento->stock : 0,
+                'saldo'   => $saldo,
             ];
         });
 
@@ -340,77 +379,86 @@ class ProductoController extends Controller
 
     public function kardex2($id, $fechaFin)
     {
-        // Validar que el producto existe
-        $producto = Producto::findOrFail($id);
-
-        // Obtener movimientos hasta la fecha fin, ordenados por fecha ascendente
         $movimientos = HistorialInventario::where('id_producto', $id)
-            ->whereDate('fecha', '<=', $fechaFin) // Solo considerar movimientos hasta la fecha fin
+            ->where('fecha', '<=', Carbon::parse($fechaFin)->endOfDay()) // ✅ cubre todo el día
             ->orderBy('fecha', 'asc')
             ->get();
 
-        // Calcular el saldo acumulativo hasta la fecha más cercana a la fecha fin
         $saldo = 0;
         foreach ($movimientos as $movimiento) {
-            if ($movimiento->motivo === 'Compra' || $movimiento->motivo === 'Ajuste Positivo') {
-                $saldo += $movimiento->stock; // Entrada
-            } elseif ($movimiento->motivo === 'Venta' || $movimiento->motivo === 'Ajuste Negativo') {
-                $saldo -= $movimiento->stock; // Salida
+            // ✅ Usa tipo_transaccion igual que kardex() corregido
+            if (in_array($movimiento->tipo_transaccion, ['Compra', 'Ajuste Positivo'])) {
+                $saldo += $movimiento->stock;
+            } elseif (in_array($movimiento->tipo_transaccion, ['Venta', 'Ajuste Negativo'])) {
+                $saldo -= $movimiento->stock;
             }
         }
 
-        return $saldo; // Devolver el saldo final hasta la fecha fin
+        return $saldo;
     }
 
     public function inventario(Request $request)
     {
         abort_if(Gate::denies('producto_inventario'), 403);
 
-        // Validar las fechas
         $fechaInicio = $request->input('fecha_inicio', Carbon::now()->subMonth()->toDateString());
-        $fechaFin = $request->input('fecha_fin', Carbon::now()->toDateString());
+        $fechaFin    = $request->input('fecha_fin',    Carbon::now()->toDateString());
 
         if (Carbon::parse($fechaInicio)->gt(Carbon::parse($fechaFin))) {
-            return redirect()->back()->with('error', 'Las fechas no son válidas. La fecha de inicio debe ser menor o igual a la fecha de fin.');
+            return redirect()->back()->with(
+                'error',
+                'La fecha de inicio debe ser menor o igual a la fecha de fin.'
+            );
         }
 
-        // Obtener los productos paginados
-        $productosPaginados = Producto::with(['historialPrecios'])->paginate(10);
+        $fechaFinCarbon = Carbon::parse($fechaFin)->endOfDay();
 
-        // Calcular los datos para la página actual
-        $inventario = collect($productosPaginados->items())->map(function ($producto) use ($fechaInicio, $fechaFin) {
-            // Obtener el saldo del producto desde el método kardex2
-            $stock = $this->kardex2($producto->id_producto, $fechaFin);
+        // Una sola query para todos los movimientos hasta fechaFin
+        $stockPorProducto = HistorialInventario::where('fecha', '<=', $fechaFinCarbon)
+            ->get()
+            ->groupBy('id_producto')
+            ->map(function ($movimientos) {
+                $saldo = 0;
+                foreach ($movimientos as $m) {
+                    if (in_array($m->tipo_transaccion, ['Compra', 'Ajuste Positivo'])) {
+                        $saldo += $m->stock;
+                    } elseif (in_array($m->tipo_transaccion, ['Venta', 'Ajuste Negativo'])) {
+                        $saldo -= $m->stock;
+                    }
+                }
+                return $saldo;
+            });
 
-            // Obtener precios en el rango de fechas
+        // Página actual — eager load para evitar N+1 en obtenerPrecioProducto
+        $productosPaginados = Producto::with(['historialPrecios', 'historialPreciosCompra'])
+            ->paginate(10);
+
+        // Inyectar datos calculados directamente en cada objeto producto
+        foreach ($productosPaginados->items() as $producto) {
+            $stock  = $stockPorProducto->get($producto->id_producto, 0);
             $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
 
-            return [
-                'descripcion' => $producto->nombre_producto,
-                'unidad' => $producto->unidad,
-                'cantidad' => $stock, // Ahora usamos el stock obtenido desde el kardex2
-                'precio_unitario' => $precio,
-                'valor' => $stock * $precio,
-            ];
-        });
+            $producto->stock_kardex  = $stock;
+            $producto->precio_kardex = $precio;
+            $producto->valor_kardex  = $stock * $precio;
+        }
 
-        // Calcular el valor total de la página actual
-        $totalValorPagina = $inventario->sum('valor');
+        $totalValorPagina = collect($productosPaginados->items())->sum('valor_kardex');
 
-        // Calcular el valor total global usando la misma lógica
-        $totalValorGlobal = Producto::with(['historialPrecios'])->get()->reduce(function ($carry, $producto) use ($fechaInicio, $fechaFin) {
-            $stock = $this->kardex2($producto->id_producto, $fechaFin);
-            $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
-
-            return $carry + ($stock * $precio);
-        }, 0);
+        // Total global — todos los productos con sus precios, reutiliza $stockPorProducto
+        $totalValorGlobal = Producto::with(['historialPreciosCompra'])
+            ->get()
+            ->sum(function ($producto) use ($fechaInicio, $fechaFin, $stockPorProducto) {
+                $stock  = $stockPorProducto->get($producto->id_producto, 0);
+                $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
+                return $stock * $precio;
+            });
 
         return view('pages.productos_inventario', [
-            'inventario' => $inventario,
-            'productos' => $productosPaginados,
-            'fechaInicio' => $fechaInicio,
-            'fechaFin' => $fechaFin,
-            'totalValor' => $totalValorPagina,
+            'productos'        => $productosPaginados,
+            'fechaInicio'      => $fechaInicio,
+            'fechaFin'         => $fechaFin,
+            'totalValor'       => $totalValorPagina,
             'totalValorGlobal' => $totalValorGlobal,
         ]);
     }
@@ -467,79 +515,52 @@ class ProductoController extends Controller
         return $precio;
     }
 
+    // DESPUÉS — reutiliza kardex2() corregido y obtenerPrecioProducto()
     public function descargarInventarioPdf(Request $request)
     {
-        // Obtener las fechas seleccionadas o valores predeterminados
         $fechaInicio = $request->input('fechaInicio', Carbon::now()->subMonth()->toDateString());
-        $fechaFin = $request->input('fechaFin', Carbon::now()->toDateString());
+        $fechaFin    = $request->input('fechaFin',    Carbon::now()->toDateString());
 
-        // Obtener todos los productos
-        $productos = Producto::with(['historialPrecios'])->get();
+        // ✅ Una sola query para todos los movimientos hasta fechaFin
+        $fechaFinCarbon = Carbon::parse($fechaFin)->endOfDay();
 
-        // Procesar cada producto
-        $inventario = $productos->map(function ($producto) use ($fechaInicio, $fechaFin) {
-            // Obtener el saldo del producto desde el método kardex2
-            $stock = $this->kardex2($producto->id_producto, $fechaFin);
-
-            // Obtener precios en el rango de fechas
-            $preciosHistorial = $producto->historialPreciosCompra()
-                ->whereDate('fecha_inicio', '>=', $fechaInicio)
-                ->whereDate('fecha_inicio', '<=', $fechaFin)
-                ->where(function ($query) use ($fechaInicio, $fechaFin) {
-                    $query->whereNull('fecha_fin')
-                        ->orWhereDate('fecha_fin', '<=', $fechaFin)
-                        ->orWhereDate('fecha_fin', '>=', $fechaInicio);
-                })
-                ->orderBy('fecha_inicio', 'desc')
-                ->get();
-
-            $precio = 0;
-
-            if ($preciosHistorial->count() >= 2) {
-                // Si hay al menos dos registros dentro del rango, promediar los dos últimos
-                $precio = $preciosHistorial->take(2)->avg('precio_compra');
-            } elseif ($preciosHistorial->count() == 1) {
-                // Si solo hay un precio en el rango, usar ese
-                $precio = $preciosHistorial->first()->precio_compra;
-            } else {
-                // Buscar el precio más cercano fuera del rango si no hay registros
-                $precioAnterior = $producto->historialPreciosCompra()
-                    ->whereDate('fecha_inicio', '<', $fechaInicio)
-                    ->orderBy('fecha_inicio', 'desc')
-                    ->first();
-
-                $precioPosterior = $producto->historialPreciosCompra()
-                    ->whereDate('fecha_inicio', '>', $fechaFin)
-                    ->orderBy('fecha_inicio', 'asc')
-                    ->first();
-
-                if ($precioAnterior && $precioPosterior) {
-                    // Seleccionar el precio más cercano a la fecha de consulta
-                    $precio = abs(strtotime($precioAnterior->fecha_inicio) - strtotime($fechaInicio)) <
-                        abs(strtotime($precioPosterior->fecha_inicio) - strtotime($fechaFin))
-                        ? $precioAnterior->precio_compra
-                        : $precioPosterior->precio_compra;
-                } elseif ($precioAnterior) {
-                    $precio = $precioAnterior->precio_compra;
-                } elseif ($precioPosterior) {
-                    $precio = $precioPosterior->precio_compra;
+        $stockPorProducto = HistorialInventario::where('fecha', '<=', $fechaFinCarbon)
+            ->get()
+            ->groupBy('id_producto')
+            ->map(function ($movimientos) {
+                $saldo = 0;
+                foreach ($movimientos as $m) {
+                    if (in_array($m->tipo_transaccion, ['Compra', 'Ajuste Positivo'])) {
+                        $saldo += $m->stock;
+                    } elseif (in_array($m->tipo_transaccion, ['Venta', 'Ajuste Negativo'])) {
+                        $saldo -= $m->stock;
+                    }
                 }
-            }
+                return $saldo;
+            });
+
+        // ✅ Eager load para evitar N+1 en obtenerPrecioProducto
+        $productos = Producto::with(['historialPreciosCompra'])->get();
+
+        $inventario = $productos->map(function ($producto) use ($fechaInicio, $fechaFin, $stockPorProducto) {
+            $stock  = $stockPorProducto->get($producto->id_producto, 0);
+            $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
 
             return [
-                'descripcion' => $producto->nombre_producto,
-                'unidad' => $producto->unidad,
-                'cantidad' => $stock, // Ahora usamos el stock obtenido desde el kardex2
+                'descripcion'     => $producto->nombre_producto,
+                'unidad'          => $producto->unidad,
+                'cantidad'        => $stock,
                 'precio_unitario' => $precio,
-                'valor' => $stock * $precio,
+                'valor'           => $stock * $precio,
             ];
         });
 
-        // Calcular el valor total del inventario global
         $totalValor = $inventario->sum('valor');
 
-        // Generar PDF con los datos del inventario
-        $pdf = PDF::loadView('pdf.inventario_pdf', compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor'));
+        $pdf = PDF::loadView(
+            'pdf.inventario_pdf',
+            compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor')
+        );
 
         return $pdf->download('inventario_' . $fechaInicio . '_al_' . $fechaFin . '.pdf');
     }
@@ -568,5 +589,80 @@ class ProductoController extends Controller
         $nombrePdf = 'codigos_barra_productos_' . now()->format('Y_m_d') . '.pdf';
 
         return $pdf->download($nombrePdf);
+    }
+
+    public function ajustarKardex()
+    {
+        abort_if(Gate::denies('producto_ajustar'), 403);
+
+        $productos = Producto::orderBy('nombre_producto')->get();
+
+        return view('pages.producto_ajustar_kardex', compact('productos'));
+    }
+
+    public function storeAjuste(Request $request, $id)
+    {
+        abort_if(Gate::denies('producto_ajustar'), 403);
+
+        $request->validate([
+            'tipo'     => 'required|in:positivo,negativo',
+            'cantidad' => 'required|numeric|min:0.01|max:50000',
+            'motivo'   => 'nullable|string|max:50',
+        ]);
+
+        $producto = Producto::findOrFail($id);
+        $cantidad = $request->cantidad;
+        $tipo     = $request->tipo;
+
+        // Validar que un ajuste negativo no deje stock negativo
+        if ($tipo === 'negativo' && $cantidad > $producto->stock) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cantidad a restar (' . $cantidad . ') supera el stock actual (' . $producto->stock . ').',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // DESPUÉS
+            if ($tipo === 'positivo') {
+                $producto->increment('stock', $cantidad);
+                $motivoDefault    = 'Ajuste Positivo';
+                $tipoTransaccion  = 'Ajuste Positivo'; // ✅ guarda la dirección
+            } else {
+                $producto->decrement('stock', $cantidad);
+                $motivoDefault    = 'Ajuste Negativo';
+                $tipoTransaccion  = 'Ajuste Negativo'; // ✅ guarda la dirección
+            }
+
+            // El motivo visible es lo que escribió el usuario, o el default si no escribió nada
+            $motivo = !empty($request->motivo) ? $request->motivo : $motivoDefault;
+
+            HistorialInventario::create([
+                'id_producto'      => $producto->id_producto,
+                'stock'            => $cantidad,
+                'fecha'            => now(),
+                'motivo'           => $motivo,           // texto libre del usuario
+                'id_transaccion'   => null,
+                'tipo_transaccion' => $tipoTransaccion,  // 'Ajuste Positivo' o 'Ajuste Negativo'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success'        => true,
+                'message'        => 'Ajuste registrado correctamente.',
+                'nuevo_stock'    => $producto->fresh()->stock,
+                'nombre_producto' => $producto->nombre_producto,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al registrar el ajuste: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

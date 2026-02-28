@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reporte de Utilidad</title>
     <style>
         body {
@@ -16,6 +15,21 @@
             margin-bottom: 20px;
         }
 
+        /* ✅ Tabla de filtros separada con su propio estilo */
+        .tabla-filtros {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+
+        .tabla-filtros td {
+            padding: 3px 6px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        /* Tabla principal de datos */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -40,36 +54,31 @@
 </head>
 
 <body>
+
     <div class="header">
         <h3>Reporte de Utilidad ({{ \Carbon\Carbon::now()->format('d/m/Y H:i:s') }})</h3>
-        <p><strong>Filtros Aplicados:</strong></p>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px;">
-            <tr>
-                <td><strong>Crédito:</strong> {{ $filtros['credito'] }}</td>
-                <td><strong>Servicio:</strong> {{ $filtros['servicio'] }}</td>
-                <td><strong>Finalizada:</strong> {{ $filtros['finalizada'] }}</td>
-            </tr>
-            <tr>
-                <td><strong>Orden:</strong> {{ $filtros['orden'] }}</td>
-                <td>
-                    <strong>Fecha específica:</strong> {{ !empty($filtros['fecha']) ? $filtros['fecha'] : '' }}
-                </td>
-                <td>
-                    <strong>Socio:</strong> {{ !empty($filtros['socio']) ? $filtros['socio'] : '' }}
-
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <strong>Fecha desde:</strong> {{ !empty($filtros['fecha_desde']) ? $filtros['fecha_desde'] : '' }}
-                </td>
-                <td>
-                    <strong>Fecha hasta:</strong> {{ !empty($filtros['fecha_hasta']) ? $filtros['fecha_hasta'] : '' }}
-                </td>
-                <td></td>
-            </tr>
-        </table>
     </div>
+
+    {{-- ✅ Filtros dentro de una tabla válida, sin <td> huérfanos --}}
+    <p><strong>Filtros Aplicados:</strong></p>
+    @if (count($filtrosLegibles) > 0)
+        <table class="tabla-filtros">
+            @foreach ($filtrosLegibles->chunk(3) as $fila)
+                <tr>
+                    @foreach ($fila as $nombre => $valor)
+                        <td><strong>{{ $nombre }}:</strong> {{ $valor }}</td>
+                    @endforeach
+                    {{-- Rellenar celdas vacías si la fila no tiene 3 elementos --}}
+                    @for ($i = count($fila); $i < 3; $i++)
+                        <td></td>
+                    @endfor
+                </tr>
+            @endforeach
+        </table>
+    @else
+        <p>No se aplicaron filtros.</p>
+    @endif
+
     <div class="totales">
         <p>Total Efectivo: <strong>Bs {{ number_format($totalEfectivo, 2) }}</strong></p>
         <p>Total Crédito: <strong>Bs {{ number_format($totalCredito, 2) }}</strong></p>
@@ -77,6 +86,7 @@
         <p>Total Costo de Ventas: <strong>Bs {{ number_format($totalCosto, 2) }}</strong></p>
         <p>Total Utilidad Bruta: <strong>Bs {{ number_format($totalUtilidad, 2) }}</strong></p>
     </div>
+
     <table>
         <thead>
             <tr>
@@ -100,7 +110,7 @@
                         <td>{{ $detalle->producto->unidad }}</td>
                         <td>{{ $detalle->producto->nombre_producto }}</td>
                         <td>Bs {{ number_format($detalle->efectivo, 2) }}</td>
-                        <td>Bs {{ number_format($detalle->credito, 2) }}</td>
+                        <td>Bs {{ number_format($detalle->monto_credito, 2) }}</td>
                         <td>Bs {{ number_format($detalle->subtotal_venta, 2) }}</td>
                         <td>Bs {{ number_format($detalle->subtotal_costo, 2) }}</td>
                         <td>Bs {{ number_format($detalle->subtotal_utilidad, 2) }}</td>
@@ -119,6 +129,6 @@
             </tr>
         </tfoot>
     </table>
-</body>
 
+</body>
 </html>

@@ -254,6 +254,18 @@ class CompraController extends Controller
                         ->where('id_producto', $producto['id'])
                         ->firstOrFail();
 
+                    // Actualizar el historial de inventario
+                    $historial = HistorialInventario::where('id_producto', $producto['id'])
+                        ->where('id_transaccion', $compra->id_compra)
+                        ->where('tipo_transaccion', 'Compra')
+                        ->first();
+
+                    if ($historial) {
+                        $historial->update([
+                            'fecha' => $fechaCompra,
+                        ]);
+                    }
+
                     if ($producto['modificado']) {
                         // Calcular la diferencia de stock
                         $diferencia = $producto['cantidad'] - $detalle->cantidad_compra;
@@ -263,16 +275,9 @@ class CompraController extends Controller
                             Producto::where('id_producto', $producto['id'])
                                 ->increment('stock', $diferencia);
 
-                            // Actualizar el historial de inventario
-                            $historial = HistorialInventario::where('id_producto', $producto['id'])
-                                ->where('id_transaccion', $compra->id_compra)
-                                ->where('tipo_transaccion', 'Compra')
-                                ->first();
-
                             if ($historial) {
                                 $historial->update([
                                     'stock' => $producto['cantidad'],
-                                    'fecha' => $fechaCompra,
                                 ]);
                             }
                         }
@@ -399,11 +404,23 @@ class CompraController extends Controller
         abort_if(Gate::denies('compra_dashboard'), 403);
 
         $fechaInicio = $request->input('fecha_inicio', now()->subMonth()->toDateString());
-        $fechaFin = $request->input('fecha_fin', now()->toDateString());
+        $fechaFin    = $request->input('fecha_fin',    now()->toDateString());
 
-        // Compras por fecha
+        // ✅ Validar que fecha_inicio <= fecha_fin
+        if (Carbon::parse($fechaInicio)->gt(Carbon::parse($fechaFin))) {
+            return redirect()->back()->with(
+                'error',
+                'La fecha de inicio debe ser menor o igual a la fecha de fin.'
+            );
+        }
+
+        // ✅ Incluir todo el día final con endOfDay
+        $fechaFinCompleta = Carbon::parse($fechaFin)->endOfDay();
+
+        // ── Compras por fecha ────────────────────────────────────────────────
         $comprasPorFecha = Compra::selectRaw('DATE(fecha_compra) as fecha, SUM(total_compra) as total')
-            ->whereBetween('fecha_compra', [$fechaInicio, $fechaFin])
+            ->where('fecha_compra', '>=', $fechaInicio)
+            ->where('fecha_compra', '<=', $fechaFinCompleta)
             ->groupBy('fecha')
             ->orderBy('fecha')
             ->get();
@@ -411,25 +428,32 @@ class CompraController extends Controller
         $comprasLabels = $comprasPorFecha->pluck('fecha')->toArray();
         $comprasValues = $comprasPorFecha->pluck('total')->toArray();
 
-        // Productos más comprados
-        $productosMasComprados = DetalleCompra::selectRaw('producto.nombre_producto, SUM(detalle_compra.cantidad_compra) as cantidad')
+        // ── Productos más comprados ──────────────────────────────────────────
+        // ✅ Filtrar por fecha_compra de la compra, no por created_at del detalle
+        $productosMasComprados = DetalleCompra::selectRaw('
+            producto.id_producto,
+            producto.nombre_producto,
+            SUM(detalle_compra.cantidad_compra) as cantidad
+        ')
+            ->join('compra', 'detalle_compra.id_compra', '=', 'compra.id_compra')
             ->join('producto', 'detalle_compra.id_producto', '=', 'producto.id_producto')
-            ->whereBetween('detalle_compra.created_at', [$fechaInicio, $fechaFin])
-            ->groupBy('producto.nombre_producto')
+            ->where('compra.fecha_compra', '>=', $fechaInicio)
+            ->where('compra.fecha_compra', '<=', $fechaFinCompleta)
+            ->groupBy('producto.id_producto', 'producto.nombre_producto')
             ->orderByDesc('cantidad')
-            ->limit(5)
-            ->get(); // Devuelve una colección
+            ->limit(5) // ✅ Top 5 productos
+            ->get();
 
         $productosLabels = $productosMasComprados->pluck('nombre_producto')->toArray();
         $productosValues = $productosMasComprados->pluck('cantidad')->toArray();
 
         return view('pages.compras_dashboard', [
-            'comprasLabels' => $comprasLabels,
-            'comprasValues' => $comprasValues,
+            'comprasLabels'   => $comprasLabels,
+            'comprasValues'   => $comprasValues,
             'productosLabels' => $productosLabels,
             'productosValues' => $productosValues,
-            'fechaInicio' => $fechaInicio,
-            'fechaFin' => $fechaFin
+            'fechaInicio'     => $fechaInicio,
+            'fechaFin'        => $fechaFin,
         ]);
     }
 }

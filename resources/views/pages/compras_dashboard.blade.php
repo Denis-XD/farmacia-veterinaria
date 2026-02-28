@@ -17,39 +17,63 @@
             </ol>
         </nav>
         <h2 class="text-center mt-3">Dashboard de Compras</h2>
+
+        {{-- ✅ Mensaje de error si fechas inválidas --}}
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
     </div>
+
     <div class="container mt-4">
         <!-- Filtros -->
         <form method="GET" action="{{ route('compras.dashboard') }}" class="row g-3 mb-4">
-            <div class="col-md-6">
+            <div class="col-md-5">
                 <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
-                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio"
-                    value="{{ $fechaInicio }}">
+                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="{{ $fechaInicio }}"
+                    required>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-5">
                 <label for="fecha_fin" class="form-label">Fecha Fin</label>
-                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ $fechaFin }}">
+                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ $fechaFin }}"
+                    required>
             </div>
-            <div class="col-md-12 text-end mt-3">
-                <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Aplicar</button>
             </div>
         </form>
 
         <!-- Gráficos -->
         <div class="row gy-4">
-            <div class="col-md-6">
+            <!-- Compras por Fecha -->
+            <div class="col-lg-6">
                 <div class="card">
                     <div class="card-header">Compras por Fecha</div>
                     <div class="card-body">
-                        <canvas id="graficoComprasPorFecha"></canvas>
+                        {{-- ✅ Altura fija para que el gráfico no colapse --}}
+                        <div style="position: relative; height: 300px;">
+                            <canvas id="graficoComprasPorFecha"></canvas>
+                        </div>
+                        @if (count($comprasLabels) === 0)
+                            <p class="text-center text-muted mt-3">No hay compras en el rango seleccionado.</p>
+                        @endif
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+
+            <!-- Productos más comprados -->
+            <div class="col-lg-6">
                 <div class="card">
-                    <div class="card-header">Productos Más Comprados</div>
+                    <div class="card-header">Top 5 Productos Más Comprados</div>
                     <div class="card-body">
-                        <canvas id="graficoProductosMasComprados"></canvas>
+                        <div style="position: relative; height: 300px;">
+                            <canvas id="graficoProductosMasComprados"></canvas>
+                        </div>
+                        @if (count($productosLabels) === 0)
+                            <p class="text-center text-muted mt-3">No hay productos comprados en el rango seleccionado.</p>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -60,65 +84,73 @@
     <script>
         const comprasLabels = @json($comprasLabels);
         const comprasValues = @json($comprasValues);
-
         const productosLabels = @json($productosLabels);
         const productosValues = @json($productosValues);
 
-        // Gráfico de Compras por Fecha (Gráfico de área)
-        const ctxCompras = document.getElementById('graficoComprasPorFecha').getContext('2d');
-        new Chart(ctxCompras, {
-            type: 'line',
-            data: {
-                labels: comprasLabels,
-                datasets: [{
-                    label: 'Compras por Fecha',
-                    data: comprasValues,
-                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 2,
-                    fill: true // Activar el área debajo de la línea
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true
-                    },
-                    y: {
-                        beginAtZero: true
-                    }
+        // ✅ Configuración común responsive
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
                 }
             }
-        });
+        };
 
-        // Gráfico de Productos Más Comprados (Barras)
-        const ctxProductos = document.getElementById('graficoProductosMasComprados').getContext('2d');
-        new Chart(ctxProductos, {
-            type: 'bar',
-            data: {
-                labels: productosLabels,
-                datasets: [{
-                    label: 'Productos Más Comprados',
-                    data: productosValues,
-                    backgroundColor: 'rgba(153, 102, 255, 0.5)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true
-                    },
-                    y: {
-                        beginAtZero: true
+        // Gráfico de Compras por Fecha
+        if (comprasLabels.length > 0) {
+            const ctxCompras = document.getElementById('graficoComprasPorFecha').getContext('2d');
+            new Chart(ctxCompras, {
+                type: 'line',
+                data: {
+                    labels: comprasLabels,
+                    datasets: [{
+                        label: 'Compras (Bs)',
+                        data: comprasValues,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
+
+        // Gráfico de Productos Más Comprados
+        if (productosLabels.length > 0) {
+            const ctxProductos = document.getElementById('graficoProductosMasComprados').getContext('2d');
+            new Chart(ctxProductos, {
+                type: 'bar',
+                data: {
+                    labels: productosLabels,
+                    datasets: [{
+                        label: 'Cantidad Comprada',
+                        data: productosValues,
+                        backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
     </script>
 @endsection

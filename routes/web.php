@@ -1,18 +1,12 @@
 <?php
 
-use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\CambiarContrasenaController;
-use App\Http\Controllers\CarreraController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\MateriaController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\RolController;
-use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\MensajeController;
-use App\Http\Controllers\MisReservasController;
 use App\Http\Controllers\NotificacionController;
-use App\Http\Controllers\ReglasController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\SocioController;
 use App\Http\Controllers\ProductoController;
@@ -99,6 +93,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/productos/inventario', [ProductoController::class, 'inventario'])->name('productos.inventario');
     Route::get('/productos/inventario/pdf', [ProductoController::class, 'descargarInventarioPdf'])->name('productos.descargarInventarioPdf');
     Route::get('/productos/generar-barcode-productos/pdf', [ProductoController::class, 'generarCodigosBarraPdf'])->name('productos.generarCodigosBarraPdf');
+    Route::get('/productos/ajustar-kardex', [ProductoController::class, 'ajustarKardex'])->name('productos.ajustarKardex');
+    Route::post('/productos/ajustar-kardex/{id}', [ProductoController::class, 'storeAjuste'])->name('productos.storeAjuste');
 
     Route::resource('productos', ProductoController::class)->names([
         'index' => 'productos.index',
@@ -185,7 +181,6 @@ Route::middleware('auth')->group(function () {
 
 
     Route::get('logout', [UserController::class, 'logout'])->name('users.logout');
-    Route::match(['get', 'post'], '/reservarAmbiente', [AmbienteController::class, 'indexAmbientes'])->name('ambientes.indexAmbientes');
 });
 Route::get('login', function () {
     if (Auth::check()) {

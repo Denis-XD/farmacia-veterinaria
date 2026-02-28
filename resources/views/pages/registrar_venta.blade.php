@@ -272,6 +272,7 @@
     <script>
         let socioSeleccionado = null;
         let productosSeleccionados = [];
+        let isSubmitting = false; // 🔒 Bandera anti-doble submit
         const socios = @json($socios);
         const productos = @json($productos);
 
@@ -282,142 +283,140 @@
             const montoPagadoInput = document.getElementById('monto_pagado');
             const saldoPendienteInput = document.getElementById('saldo_pendiente');
             const porcentajeDescuentoInput = document.getElementById('porcentaje_descuento');
+            const btnFinalizar = document.getElementById('finalizarVenta');
             const tabla = document.getElementById('tablaProductos');
             const tbody = tabla.querySelector('tbody');
 
-            // Buscar proveedores dinámicamente
-            buscarSocioInput.addEventListener("input", function() {
+            // ─── Búsqueda de socios ──────────────────────────────────────────────────
+            buscarSocioInput.addEventListener('input', function() {
                 const buscar = this.value.toLowerCase().trim();
                 const resultados = buscar ?
-                    socios.filter(
-                        (socio) =>
-                        socio.id_socio.toString().includes(buscar) ||
-                        (socio.celular_socio && socio.celular_socio.toString().includes(buscar)) ||
-                        socio.nombre_socio.toLowerCase().includes(buscar)
+                    socios.filter(s =>
+                        s.id_socio.toString().includes(buscar) ||
+                        (s.celular_socio && s.celular_socio.toString().includes(buscar)) ||
+                        s.nombre_socio.toLowerCase().includes(buscar)
                     ) : [];
                 renderSocios(resultados);
             });
 
             function renderSocios(resultados) {
-                const tabla = document.getElementById("tablaSocios");
-                const tbody = tabla.querySelector("tbody");
-                tbody.innerHTML = "";
-
+                const tabla = document.getElementById('tablaSocios');
+                const tbody = tabla.querySelector('tbody');
+                tbody.innerHTML = '';
                 if (resultados.length > 0) {
-                    tabla.classList.remove("d-none");
-                    resultados.forEach((socio) => {
+                    tabla.classList.remove('d-none');
+                    resultados.forEach(socio => {
                         tbody.innerHTML += `
                     <tr>
                         <td>${socio.id_socio}</td>
                         <td>${socio.nombre_socio}</td>
-                        <td>${socio.celular_socio || "N/A"}</td>
+                        <td>${socio.celular_socio || 'N/A'}</td>
                         <td>
-                            <button class="btn btn-success btn-sm btn-choose-proveedor" data-id="${socio.id_socio}">
-                                Añadir
-                            </button>
+                            <button class="btn btn-success btn-sm btn-choose-proveedor"
+                                data-id="${socio.id_socio}">Añadir</button>
                         </td>
                     </tr>`;
                     });
                 } else {
-                    tabla.classList.add("d-none");
-                    //showNotification('No se encontraron socios.', 'danger');
+                    tabla.classList.add('d-none');
                 }
             }
 
-            // Seleccionar proveedor
-            document.addEventListener("click", function(event) {
-                if (event.target.classList.contains("btn-choose-proveedor")) {
+            document.addEventListener('click', function(event) {
+                if (event.target.classList.contains('btn-choose-proveedor')) {
                     const idSocio = event.target.dataset.id;
-                    const socio = socios.find((s) => s.id_socio == idSocio);
-
+                    const socio = socios.find(s => s.id_socio == idSocio);
                     socioSeleccionado = socio;
-                    document.getElementById("socioSeleccionado").classList.remove("d-none");
-                    document.getElementById("nombreSocio").innerText = socio.nombre_socio;
+                    document.getElementById('socioSeleccionado').classList.remove('d-none');
+                    document.getElementById('nombreSocio').innerText = socio.nombre_socio;
+                    // Oculta la tabla de socios tras seleccionar
+                    document.getElementById('tablaSocios').classList.add('d-none');
+                    buscarSocioInput.value = '';
                 }
-            });
-
-            document.addEventListener("click", function(event) {
-                if (event.target.id === "quitarSocio") {
+                if (event.target.id === 'quitarSocio') {
                     socioSeleccionado = null;
-                    document.getElementById("socioSeleccionado").classList.add("d-none");
-                    document.getElementById("nombreSocio").innerText = "";
+                    document.getElementById('socioSeleccionado').classList.add('d-none');
+                    document.getElementById('nombreSocio').innerText = '';
                 }
             });
 
-            // Búsqueda dinámica mientras se escribe
+            // ─── Búsqueda de productos ───────────────────────────────────────────────
             buscarProductoInput.addEventListener('input', () => {
                 const buscar = buscarProductoInput.value.toLowerCase().trim();
-
                 if (!buscar) {
                     tabla.classList.add('d-none');
                     tbody.innerHTML = '';
                     return;
                 }
 
-                const resultados = productos.filter(producto =>
-                    producto.id_producto.toString().includes(buscar) ||
-                    (producto.codigo_barra && producto.codigo_barra.toLowerCase().includes(buscar)) ||
-                    producto.nombre_producto.toLowerCase().includes(buscar)
+                const resultados = productos.filter(p =>
+                    p.id_producto.toString().includes(buscar) ||
+                    (p.codigo_barra && p.codigo_barra.toLowerCase().includes(buscar)) ||
+                    p.nombre_producto.toLowerCase().includes(buscar)
                 );
 
                 tbody.innerHTML = '';
-                if (resultados.length > 0) {
-                    // Si hay un único resultado y el input proviene de un código de barras (numérico)
-                    if (resultados.length === 1) {
-                        const producto = resultados[0];
-                        if (!productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
-                            añadirProducto(producto); // Añade el producto automáticamente
-                        } else {
-                            showNotification('El producto ya está añadido.', 'danger');
-                        }
 
-                        // Limpia el campo de búsqueda con un pequeño retardo
-                        setTimeout(() => {
-                            buscarProductoInput.value =
-                                ''; // Limpia el campo de búsqueda completamente
-                        }, 10);
-
-                        tabla.classList.add('d-none');
-                        tbody.innerHTML = '';
-                        return; // Termina la función aquí
+                // DESPUÉS — muestra el producto en la tabla aunque sea resultado único
+                if (resultados.length === 1) {
+                    const producto = resultados[0];
+                    if (!productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
+                        añadirProducto(producto);
+                    } else {
+                        showNotification('El producto ya está añadido.', 'danger');
                     }
 
-                    // Si hay más de un resultado, muestra la tabla
+                    // Muestra el producto en la tabla para que veas su stock
+                    tabla.classList.remove('d-none');
+                    tbody.innerHTML = `
+                    <tr>
+                        <td>${producto.id_producto}</td>
+                        <td>${producto.codigo_barra || 'N/A'}</td>
+                        <td>${producto.nombre_producto}</td>
+                        <td>${producto.stock}</td>
+                        <td>
+                            <button class="btn btn-success btn-sm btn-choose-producto"
+                                data-id="${producto.id_producto}">Añadir</button>
+                        </td>
+                    </tr>`;
+
+                    setTimeout(() => {
+                        buscarProductoInput.value = '';
+                    }, 10);
+                    return;
+                }
+
+                if (resultados.length > 1) {
                     tabla.classList.remove('d-none');
                     resultados.forEach(producto => {
                         tbody.innerHTML += `
-                            <tr>
-                                <td>${producto.id_producto}</td>
-                                <td>${producto.codigo_barra || 'N/A'}</td>
-                                <td>${producto.nombre_producto}</td>
-                                <td>${producto.stock}</td>
-                                <td>
-                                    <button class="btn btn-success btn-sm btn-choose-producto" 
-                                        data-id="${producto.id_producto}">Añadir</button>
-                                </td>
-                            </tr>`;
+                    <tr>
+                        <td>${producto.id_producto}</td>
+                        <td>${producto.codigo_barra || 'N/A'}</td>
+                        <td>${producto.nombre_producto}</td>
+                        <td>${producto.stock}</td>
+                        <td>
+                            <button class="btn btn-success btn-sm btn-choose-producto"
+                                data-id="${producto.id_producto}">Añadir</button>
+                        </td>
+                    </tr>`;
                     });
                 } else {
                     tabla.classList.add('d-none');
                 }
             });
 
-            // Manejar clic para añadir productos manualmente
-            document.addEventListener('click', (event) => {
+            // DESPUÉS — solo se elimina el ocultado de la tabla
+            document.addEventListener('click', event => {
                 if (event.target.classList.contains('btn-choose-producto')) {
                     const idProducto = parseInt(event.target.getAttribute('data-id'));
                     const producto = productos.find(p => p.id_producto === idProducto);
-
                     if (!producto) {
                         showNotification('Producto no encontrado.', 'danger');
                         return;
                     }
-
                     añadirProducto(producto);
-                    setTimeout(() => {
-                        buscarProductoInput.value =
-                            ''; // Limpia el campo después de añadir desde la tabla
-                    }, 10);
+                    // La tabla permanece visible con su contenido intacto
                 }
             });
 
@@ -426,57 +425,64 @@
                     showNotification('El producto ya está añadido.', 'danger');
                     return;
                 }
-
                 if (producto.stock <= 0) {
                     showNotification('El producto no tiene stock disponible.', 'danger');
                     return;
                 }
-
-                producto.cantidad = 1;
-                producto.subtotal = (producto.cantidad * producto.precio_venta_actual).toFixed(2);
-                productosSeleccionados.push(producto);
+                // Clona el objeto para no mutar el array original de productos
+                const item = {
+                    ...producto,
+                    cantidad: 1
+                };
+                item.subtotal = parseFloat((item.cantidad * item.precio_venta_actual).toFixed(2));
+                productosSeleccionados.push(item);
                 renderProductos();
             }
 
             function renderProductos() {
                 const tbody = document.getElementById('listaProductos');
                 tbody.innerHTML = '';
-
                 productosSeleccionados.forEach((producto, index) => {
                     tbody.innerHTML += `
-                        <tr>
-                            <td>${producto.nombre_producto}</td>
-                            <td>Bs ${producto.precio_venta_actual}</td>
-                            <td>
-                                <input type="number" class="form-control cantidad" value="${producto.cantidad}" 
-                                    step="0.01" 
-                                    data-index="${index}" onfocus="this.select()">
-                            </td>
-                            <td>
-                                <input type="number" class="form-control subtotal" value="${producto.subtotal}"
-                                    step="0.01" data-index="${index}">
-                            </td>
-                            <td><button class="btn btn-danger btn-sm btn-quitar-producto" data-index="${index}">Quitar</button></td>
-                        </tr>`;
+                <tr>
+                    <td>${producto.nombre_producto}</td>
+                    <td>Bs ${parseFloat(producto.precio_venta_actual).toFixed(2)}</td>
+                    <td>
+                        <input type="number" class="form-control cantidad"
+                            value="${producto.cantidad}"
+                            min="0.01" max="${producto.stock}"
+                            step="0.01"
+                            data-index="${index}" onfocus="this.select()">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control subtotal"
+                            value="${parseFloat(producto.subtotal).toFixed(2)}"
+                            min="0" step="0.01"
+                            data-index="${index}">
+                    </td>
+                    <td>
+                        <button class="btn btn-danger btn-sm btn-quitar-producto"
+                            data-index="${index}">Quitar</button>
+                    </td>
+                </tr>`;
                 });
-
                 actualizarTotal();
             }
 
-            // Validar y actualizar cantidad en tiempo real
-            document.addEventListener('input', (event) => {
+            // ─── Eventos de inputs ───────────────────────────────────────────────────
+            document.addEventListener('input', event => {
                 if (event.target.classList.contains('cantidad')) {
                     const index = event.target.getAttribute('data-index');
-                    const cantidadInput = event.target;
-                    const cantidad = parseFloat(cantidadInput.value);
+                    const cantidad = parseFloat(event.target.value);
                     const producto = productosSeleccionados[index];
 
                     if (isNaN(cantidad) || cantidad <= 0 || cantidad > producto.stock) {
-                        cantidadInput.classList.add('is-invalid');
+                        event.target.classList.add('is-invalid');
                     } else {
-                        cantidadInput.classList.remove('is-invalid');
+                        event.target.classList.remove('is-invalid');
                         producto.cantidad = cantidad;
-                        producto.subtotal = producto.cantidad * producto.precio_venta_actual;
+                        producto.subtotal = parseFloat((cantidad * producto.precio_venta_actual).toFixed(
+                            2));
                         actualizarSubtotal(index, producto.subtotal);
                         actualizarTotal();
                     }
@@ -484,26 +490,20 @@
 
                 if (event.target.classList.contains('subtotal')) {
                     const index = event.target.getAttribute('data-index');
-                    const subtotalInput = event.target;
-                    const subtotal = parseFloat(subtotalInput.value);
-                    const producto = productosSeleccionados[index];
-
+                    const subtotal = parseFloat(event.target.value);
                     if (isNaN(subtotal) || subtotal < 0) {
-                        subtotalInput.classList.add('is-invalid');
+                        event.target.classList.add('is-invalid');
                     } else {
-                        subtotalInput.classList.remove('is-invalid');
-                        producto.subtotal = subtotal;
-                        actualizarTotal(); // Mantiene la cantidad fija
+                        event.target.classList.remove('is-invalid');
+                        productosSeleccionados[index].subtotal = subtotal;
+                        actualizarTotal();
                     }
                 }
 
-                // Validar y aplicar porcentaje de descuento
                 if (event.target.id === 'porcentaje_descuento') {
-                    const porcentajeDescuento = parseFloat(porcentajeDescuentoInput.value);
-                    if (isNaN(porcentajeDescuento) || porcentajeDescuento < 0 || porcentajeDescuento >
-                        100) {
+                    const val = parseFloat(porcentajeDescuentoInput.value);
+                    if (isNaN(val) || val < 0 || val > 100) {
                         porcentajeDescuentoInput.classList.add('is-invalid');
-
                     } else {
                         porcentajeDescuentoInput.classList.remove('is-invalid');
                         actualizarTotal();
@@ -511,96 +511,109 @@
                 }
             });
 
-            // Actualizar "Saldo Pendiente" en tiempo real cuando cambia "Total de la Venta"
             totalVentaInput.addEventListener('input', () => {
                 const total = parseFloat(totalVentaInput.value) || 0;
                 const montoPagado = parseFloat(montoPagadoInput.value) || 0;
                 saldoPendienteInput.value = (total - montoPagado).toFixed(2);
             });
 
-            // Actualizar "Saldo Pendiente" en tiempo real cuando cambia "Monto Pagado"
             montoPagadoInput.addEventListener('input', () => {
                 const total = parseFloat(totalVentaInput.value) || 0;
                 const montoPagado = parseFloat(montoPagadoInput.value) || 0;
                 saldoPendienteInput.value = (total - montoPagado).toFixed(2);
             });
 
-            // Quitar producto
-            document.addEventListener('click', (event) => {
+            document.addEventListener('click', event => {
                 if (event.target.classList.contains('btn-quitar-producto')) {
-                    const index = event.target.getAttribute('data-index');
+                    const index = parseInt(event.target.getAttribute('data-index'));
                     productosSeleccionados.splice(index, 1);
                     renderProductos();
                 }
             });
 
+            // ─── Totales ─────────────────────────────────────────────────────────────
             function actualizarTotal() {
-                const totalSinDescuento = productosSeleccionados.reduce((sum, producto) => sum + parseFloat(producto
-                        .subtotal),
-                    0);
-                const porcentajeDescuento = parseFloat(porcentajeDescuentoInput.value) || 0;
-
-                if (porcentajeDescuento >= 0 && porcentajeDescuento <= 100) {
-                    const descuento = (totalSinDescuento * porcentajeDescuento) / 100;
-                    const totalConDescuento = totalSinDescuento - descuento;
-
-                    totalVentaInput.value = totalConDescuento.toFixed(2);
-                    saldoPendienteInput.value = (totalConDescuento - parseFloat(montoPagadoInput.value || 0))
-                        .toFixed(2);
+                const totalSinDescuento = productosSeleccionados.reduce(
+                    (sum, p) => sum + parseFloat(p.subtotal), 0
+                );
+                const porcentaje = parseFloat(porcentajeDescuentoInput.value) || 0;
+                if (porcentaje >= 0 && porcentaje <= 100) {
+                    const total = totalSinDescuento * (1 - porcentaje / 100);
+                    totalVentaInput.value = total.toFixed(2);
+                    saldoPendienteInput.value = (total - (parseFloat(montoPagadoInput.value) || 0)).toFixed(2);
                 }
             }
 
             function actualizarSubtotal(index, subtotal) {
-                const producto = productosSeleccionados[index];
-                producto.subtotal = parseFloat(subtotal).toFixed(2);
-
-                const subtotalInput = document.querySelector(`.subtotal[data-index="${index}"]`);
-                if (subtotalInput) {
-                    subtotalInput.value = subtotal.toFixed(2);
-                }
+                productosSeleccionados[index].subtotal = parseFloat(subtotal).toFixed(2);
+                const input = document.querySelector(`.subtotal[data-index="${index}"]`);
+                if (input) input.value = parseFloat(subtotal).toFixed(2);
             }
 
+            // ─── Notificaciones ──────────────────────────────────────────────────────
             function showNotification(message, type) {
                 const notification = document.createElement('div');
                 notification.className = `notification ${type}`;
                 notification.innerText = message;
-
                 document.body.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.classList.add('show');
-                }, 10);
-
+                setTimeout(() => notification.classList.add('show'), 10);
                 setTimeout(() => {
                     notification.classList.remove('show');
                     notification.addEventListener('transitionend', () => notification.remove());
                 }, 3000);
             }
 
-            document.getElementById('finalizarVenta').addEventListener('click', async () => {
+            // ─── Finalizar Venta ─────────────────────────────────────────────────────
+            btnFinalizar.addEventListener('click', async () => {
 
+                // 🔒 Bloqueo anti-doble submit — primer punto de defensa
+                if (isSubmitting) return;
+
+                // Validaciones front-end
                 if (productosSeleccionados.length === 0) {
                     showNotification('Debe seleccionar al menos un producto.', 'danger');
                     return;
                 }
 
+                const montoPagado = parseFloat(montoPagadoInput.value);
+                if (isNaN(montoPagado) || montoPagado < 0) {
+                    showNotification('El monto pagado no es válido.', 'danger');
+                    return;
+                }
+
+                const totalVenta = parseFloat(totalVentaInput.value) || 0;
+                if (totalVenta <= 0) {
+                    showNotification('El total de la venta debe ser mayor a 0.', 'danger');
+                    return;
+                }
+
+                const hayInvalidos = document.querySelectorAll('.is-invalid').length > 0;
+                if (hayInvalidos) {
+                    showNotification('Corrija los campos inválidos antes de continuar.', 'danger');
+                    return;
+                }
+
+                // 🔒 Bloquear botón — segundo punto de defensa
+                isSubmitting = true;
+                btnFinalizar.disabled = true;
+                btnFinalizar.textContent = 'Procesando...';
+
                 const data = {
                     id_socio: socioSeleccionado ? socioSeleccionado.id_socio : null,
-                    total_venta: parseFloat(totalVentaInput.value) || 0,
-                    descuento_venta: parseInt(document.getElementById('porcentaje_descuento')
-                        .value) || 0,
-                    monto_pagado: parseFloat(montoPagadoInput.value) || 0,
+                    total_venta: totalVenta,
+                    descuento_venta: parseInt(porcentajeDescuentoInput.value) || 0,
+                    monto_pagado: montoPagado,
                     saldo_pendiente: parseFloat(saldoPendienteInput.value) || 0,
                     descripcion: document.getElementById('descripcion').value || null,
-                    fecha_venta: (document.getElementById('fechaHoraVenta').value) || null,
+                    fecha_venta: document.getElementById('fechaHoraVenta').value || null,
                     credito: parseInt(document.getElementById('credito').value) || 0,
                     servicio: parseInt(document.getElementById('servicio').value) || 0,
                     finalizada: parseInt(document.getElementById('finalizada').value) || 0,
-                    productos: productosSeleccionados.map(producto => ({
-                        id: producto.id_producto,
-                        cantidad: producto.cantidad,
-                        subtotal: producto.subtotal
-                    }))
+                    productos: productosSeleccionados.map(p => ({
+                        id: p.id_producto,
+                        cantidad: p.cantidad,
+                        subtotal: p.subtotal,
+                    })),
                 };
 
                 try {
@@ -615,17 +628,27 @@
                     });
 
                     const result = await response.json();
+
                     if (result.success) {
                         showNotification(result.message, 'success');
+                        // Botón no se restaura — la página redirige en 2s
                         setTimeout(() => {
                             window.location.href = result.redirect;
                         }, 2000);
                     } else {
                         showNotification(result.message || 'Error al registrar la venta.', 'danger');
+                        // 🔓 Restaurar solo en error del servidor
+                        isSubmitting = false;
+                        btnFinalizar.disabled = false;
+                        btnFinalizar.textContent = 'Finalizar Venta';
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    showNotification('Hubo un error al registrar la venta.', 'danger');
+                    showNotification('Hubo un error de conexión al registrar la venta.', 'danger');
+                    // 🔓 Restaurar en fallo de red
+                    isSubmitting = false;
+                    btnFinalizar.disabled = false;
+                    btnFinalizar.textContent = 'Finalizar Venta';
                 }
             });
         });

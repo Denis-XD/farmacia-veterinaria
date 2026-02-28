@@ -18,22 +18,10 @@
     <div class="container mt-4">
         <div class="mb-3">
             <h5>Filtros Aplicados:</h5>
-            @if (count(array_filter($filtros, fn($valor) => $valor !== 'all' && $valor !== null)))
+            @if (count($filtrosLegibles) > 0)
                 <ul>
-                    @foreach ($filtros as $filtro => $valor)
-                        @if ($filtro === 'credito' || $filtro === 'servicio' || $filtro === 'finalizada')
-                            <li><strong>{{ ucfirst(str_replace('_', ' ', $filtro)) }}:</strong>
-                                @if ($valor === 'all')
-                                    Todas
-                                @else
-                                    {{ $valor == 1 ? 'Sí' : 'No' }}
-                                @endif
-                            </li>
-                        @elseif ($filtro === 'orden')
-                            <li><strong>Orden:</strong> {{ $valor === 'asc' ? 'Más antigua' : 'Más reciente' }}</li>
-                        @elseif (!empty($valor) && $valor !== 'all')
-                            <li><strong>{{ ucfirst(str_replace('_', ' ', $filtro)) }}:</strong> {{ $valor }}</li>
-                        @endif
+                    @foreach ($filtrosLegibles as $nombre => $valor)
+                        <li><strong>{{ $nombre }}:</strong> {{ $valor }}</li>
                     @endforeach
                 </ul>
             @else

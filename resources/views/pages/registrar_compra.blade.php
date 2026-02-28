@@ -226,8 +226,10 @@
     </style>
 
     <script>
+        // DESPUÉS
         let proveedorSeleccionado = null;
         let productosSeleccionados = [];
+        let isSubmitting = false; // 🔒 Bandera anti-doble submit
         const proveedores = @json($proveedores);
         const productos = @json($productos);
 
@@ -279,6 +281,7 @@
             }
 
             // Seleccionar proveedor
+            // DESPUÉS
             document.addEventListener("click", function(event) {
                 if (event.target.classList.contains("btn-choose-proveedor")) {
                     const idProveedor = event.target.dataset.id;
@@ -287,6 +290,9 @@
                     proveedorSeleccionado = proveedor;
                     document.getElementById("proveedorSeleccionado").classList.remove("d-none");
                     document.getElementById("nombreProveedor").innerText = proveedor.nombre_proveedor;
+                    // Oculta la tabla de proveedores tras seleccionar
+                    document.getElementById("tablaProveedores").classList.add("d-none");
+                    buscarProveedorInput.value = '';
                 }
             });
 
@@ -309,23 +315,33 @@
                 tbody.innerHTML = '';
                 if (resultados.length > 0) {
                     // Si hay un único resultado y el input proviene de un código de barras (numérico)
+                    // DESPUÉS
                     if (resultados.length === 1) {
                         const producto = resultados[0];
                         if (!productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
-                            añadirProducto(producto); // Añade el producto automáticamente
+                            añadirProducto(producto);
                         } else {
                             showNotification('El producto ya está añadido.', 'danger');
                         }
 
-                        // Limpia el campo de búsqueda con un pequeño retardo
-                        setTimeout(() => {
-                            buscarProductoInput.value =
-                                ''; // Limpia el campo de búsqueda completamente
-                        }, 10);
+                        // Muestra el producto en la tabla para ver su stock
+                        tabla.classList.remove('d-none');
+                        tbody.innerHTML = `
+                            <tr>
+                                <td>${producto.id_producto}</td>
+                                <td>${producto.codigo_barra || 'N/A'}</td>
+                                <td>${producto.nombre_producto}</td>
+                                <td>${producto.stock}</td>
+                                <td>
+                                    <button class="btn btn-success btn-sm btn-choose-producto"
+                                        data-id="${producto.id_producto}">Añadir</button>
+                                </td>
+                            </tr>`;
 
-                        tabla.classList.add('d-none');
-                        tbody.innerHTML = '';
-                        return; // Termina la función aquí
+                        setTimeout(() => {
+                            buscarProductoInput.value = '';
+                        }, 10);
+                        return;
                     }
 
                     // Si hay más de un resultado, muestra la tabla
@@ -349,6 +365,7 @@
             });
 
             // Manejar clic para añadir productos manualmente
+            // DESPUÉS — la tabla permanece visible, sin limpiar el buscador
             document.addEventListener('click', (event) => {
                 if (event.target.classList.contains('btn-choose-producto')) {
                     const idProducto = parseInt(event.target.getAttribute('data-id'));
@@ -360,27 +377,23 @@
                     }
 
                     añadirProducto(producto);
-                    setTimeout(() => {
-                        buscarProductoInput.value =
-                            ''; // Limpia el campo después de añadir desde la tabla
-                    }, 10);
+                    // La tabla permanece visible con su contenido intacto
                 }
             });
 
+            // DESPUÉS — clona el objeto para no mutar el array original
             function añadirProducto(producto) {
                 if (productosSeleccionados.some(p => p.id_producto === producto.id_producto)) {
                     showNotification('El producto ya está añadido.', 'danger');
                     return;
                 }
 
-                if (producto.stock <= 0) {
-                    showNotification('El producto no tiene stock disponible.', 'danger');
-                    return;
-                }
-
-                producto.cantidad = 1;
-                producto.subtotal = (producto.cantidad * producto.precio_compra_actual).toFixed(2);
-                productosSeleccionados.push(producto);
+                const item = {
+                    ...producto,
+                    cantidad: 1
+                };
+                item.subtotal = parseFloat((item.cantidad * item.precio_compra_actual).toFixed(2));
+                productosSeleccionados.push(item);
                 renderProductos();
             }
 
@@ -510,8 +523,15 @@
                 }, 3000);
             }
 
+            // DESPUÉS — con bandera isSubmitting, bloqueo de botón y restauración correcta
             document.getElementById('finalizarCompra').addEventListener('click', async function() {
 
+                // 🔒 Bloqueo inmediato — evita doble submit
+                if (isSubmitting) return;
+
+                const btnFinalizar = document.getElementById('finalizarCompra');
+
+                // Validaciones front-end (antes de bloquear, para no tener que restaurar)
                 if (!proveedorSeleccionado) {
                     showNotification('Debe seleccionar un proveedor.', 'danger');
                     return;
@@ -530,13 +550,29 @@
                     return;
                 }
 
+                const totalCompra = parseFloat(document.getElementById('totalCompraInput').value) || 0;
+                if (totalCompra <= 0) {
+                    showNotification('El total de la compra debe ser mayor a 0.', 'danger');
+                    return;
+                }
+
+                const hayInvalidos = document.querySelectorAll('.is-invalid').length > 0;
+                if (hayInvalidos) {
+                    showNotification('Corrija los campos inválidos antes de continuar.', 'danger');
+                    return;
+                }
+
+                // 🔒 Bloquear botón
+                isSubmitting = true;
+                btnFinalizar.disabled = true;
+                btnFinalizar.textContent = 'Procesando...';
+
                 const data = {
                     proveedor_id: proveedorSeleccionado.id_proveedor,
                     fecha_compra: document.getElementById('fechaCompra').value || null,
                     factura_compra: document.getElementById('compraConFactura').checked ? 1 : 0,
                     descuento_compra: porcentajeDescuento,
-                    total_compra: parseFloat(document.getElementById('totalCompraInput').value) ||
-                        0,
+                    total_compra: totalCompra,
                     productos: productosSeleccionados.map(producto => ({
                         id: producto.id_producto,
                         cantidad: producto.cantidad,
@@ -546,20 +582,18 @@
                 };
 
                 try {
-                    // Usa `await` aquí para esperar la respuesta
                     const response = await fetch('/compras', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                .getAttribute(
-                                    'content'),
+                                .getAttribute('content'),
                         },
                         body: JSON.stringify(data),
                     });
 
                     if (!response.ok) {
-                        const errorText = await response.text(); // Leer la respuesta como texto
+                        const errorText = await response.text();
                         throw new Error(`Error del servidor: ${errorText}`);
                     }
 
@@ -567,18 +601,26 @@
 
                     if (result.success) {
                         showNotification(result.message, 'success');
+                        // No restaurar — la página redirige en 2s
                         setTimeout(() => {
                             window.location.href = result.redirect;
                         }, 2000);
                     } else {
                         showNotification(result.message || 'Error al registrar la compra.', 'danger');
+                        // 🔓 Restaurar solo en error del servidor
+                        isSubmitting = false;
+                        btnFinalizar.disabled = false;
+                        btnFinalizar.textContent = 'Finalizar Compra';
                     }
                 } catch (error) {
                     console.error('Error:', error);
                     showNotification('Hubo un error al registrar la compra.', 'danger');
+                    // 🔓 Restaurar en fallo de red
+                    isSubmitting = false;
+                    btnFinalizar.disabled = false;
+                    btnFinalizar.textContent = 'Finalizar Compra';
                 }
             });
-
         });
     </script>
 @endsection

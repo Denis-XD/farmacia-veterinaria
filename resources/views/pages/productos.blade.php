@@ -41,8 +41,14 @@
         @endif
     </div>
 
-    <div class="d-flex justify-content-end my-3">
-        <a href="{{ route('productos.generarCodigosBarraPdf') }}" class="btn btn-danger ms-auto">
+    <div class="d-flex justify-content-end my-3 gap-2">
+        @can('producto_ajustar')
+            <a href="{{ route('productos.ajustarKardex') }}" class="btn btn-primary text-white">
+                Ajustar Kardex
+            </a>
+        @endcan
+
+        <a href="{{ route('productos.generarCodigosBarraPdf') }}" class="btn btn-danger">
             Generar Codigos
         </a>
     </div>

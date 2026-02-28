@@ -28,50 +28,57 @@ class VentaController extends Controller
     {
         abort_if(Gate::denies('venta_listar'), 403);
 
-        $orden = $request->get('orden', 'desc');
-        $socio = $request->get('socio', null);
-        $fechaEspecifica = $request->get('fecha', null);
-        $fechaDesde = $request->get('fecha_desde', null);
-        $fechaHasta = $request->get('fecha_hasta', null);
-        $credito = $request->get('credito', 'all');
-        $servicio = $request->get('servicio', 'all');
-        $finalizada = $request->get('finalizada', 'all');
+        $orden          = $request->get('orden', 'desc');
+        $socio          = $request->get('socio');
+        $fechaEspecifica = $request->get('fecha');
+        $fechaDesde     = $request->get('fecha_desde');
+        $fechaHasta     = $request->get('fecha_hasta');
+        $credito        = $request->get('credito', 'all');
+        $servicio       = $request->get('servicio', 'all');
+        $finalizada     = $request->get('finalizada', 'all');
 
+        // ✅ Construir la query una sola vez
         $query = Venta::with(['socio', 'detalles.producto', 'pagos']);
 
         if (!empty($socio)) {
-            $query->whereHas('socio', function ($q) use ($socio) {
-                $q->where('nombre_socio', 'like', '%' . $socio . '%');
-            });
+            $query->whereHas(
+                'socio',
+                fn($q) =>
+                $q->where('nombre_socio', 'like', '%' . $socio . '%')
+            );
         }
 
-        if ($fechaEspecifica) {
-            $query->whereDate('fecha_venta', '=', $fechaEspecifica);
-        }
-
-        if ($fechaDesde && $fechaHasta) {
-            $query->whereBetween('fecha_venta', [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59']);
+        if (!empty($fechaEspecifica)) {
+            $query->whereDate('fecha_venta', $fechaEspecifica);
+        } else {
+            // ✅ Aplicar cada fecha independientemente, no exigir ambas
+            if (!empty($fechaDesde)) {
+                $query->where('fecha_venta', '>=', $fechaDesde . ' 00:00:00');
+            }
+            if (!empty($fechaHasta)) {
+                $query->where('fecha_venta', '<=', $fechaHasta . ' 23:59:59');
+            }
         }
 
         if ($credito !== 'all') {
             $query->where('credito', $credito);
         }
-
         if ($servicio !== 'all') {
             $query->where('servicio', $servicio);
         }
-
         if ($finalizada !== 'all') {
             $query->where('finalizada', $finalizada);
         }
 
-        $query->orderBy('fecha_venta', $orden);
+        $query->orderBy('fecha_venta', $orden === 'asc' ? 'asc' : 'desc');
 
-        // Calcular el total de ventas
-        $totalVenta = $query->sum('total_venta');
+        // ✅ Clonar la query para los totales ANTES de paginar
+        $queryTotales = clone $query;
 
-        // Calcular la cantidad de productos vendidos
-        $cantidadProductos = $query->withSum('detalles', 'cantidad_venta')->get()->sum('detalles_sum_cantidad_venta');
+        $totalVenta       = $queryTotales->sum('total_venta');
+        $cantidadProductos = $queryTotales->withSum('detalles', 'cantidad_venta')
+            ->get()
+            ->sum('detalles_sum_cantidad_venta');
 
         $ventas = $query->paginate(10)->appends($request->query());
 
@@ -317,6 +324,18 @@ class VentaController extends Controller
                         ->where('id_producto', $producto['id'])
                         ->firstOrFail();
 
+                    // Actualizar el historial de inventario
+                    $historial = HistorialInventario::where('id_producto', $producto['id'])
+                        ->where('id_transaccion', $venta->id_venta)
+                        ->where('tipo_transaccion', 'Venta')
+                        ->first();
+
+                    if ($historial) {
+                        $historial->update([
+                            'fecha' => $fechaVenta,
+                        ]);
+                    }
+
                     if ($producto['modificado']) {
                         // Calcular la diferencia de stock
                         $diferencia = $producto['cantidad'] - $detalle->cantidad_venta;
@@ -326,16 +345,9 @@ class VentaController extends Controller
                             Producto::where('id_producto', $producto['id'])
                                 ->decrement('stock', $diferencia);
 
-                            // Actualizar el historial de inventario
-                            $historial = HistorialInventario::where('id_producto', $producto['id'])
-                                ->where('id_transaccion', $venta->id_venta)
-                                ->where('tipo_transaccion', 'Venta')
-                                ->first();
-
                             if ($historial) {
                                 $historial->update([
                                     'stock' => $producto['cantidad'],
-                                    'fecha' => $fechaVenta,
                                 ]);
                             }
                         }
@@ -460,271 +472,260 @@ class VentaController extends Controller
     {
         abort_if(Gate::denies('venta_reporte_utilidad'), 403);
 
-        $filtros = $request->all();
+        $filtros = [
+            'fecha'       => $request->get('fecha'),
+            'fecha_desde' => $request->get('fecha_desde'),
+            'fecha_hasta' => $request->get('fecha_hasta'),
+            'socio'       => $request->get('socio'),
+            'credito'     => $request->get('credito', 'all'),
+            'servicio'    => $request->get('servicio', 'all'),
+            'finalizada'  => $request->get('finalizada', 'all'),
+            'orden'       => $request->get('orden', 'desc'),
+        ];
 
-        // Valores por defecto para filtros booleanos y orden
-        $filtros['credito'] = $filtros['credito'] ?? 'all';
-        $filtros['servicio'] = $filtros['servicio'] ?? 'all';
-        $filtros['finalizada'] = $filtros['finalizada'] ?? 'all';
-        $filtros['orden'] = $filtros['orden'] ?? 'desc';
+        // ✅ Query base reutilizable
+        $queryBase = $this->buildVentasQuery($filtros);
 
-        $totalesGlobales = $this->calcularTotalesGlobales($filtros);
+        // ✅ Totales globales sin paginar — clonar antes de paginar
+        $ventasGlobales = (clone $queryBase)
+            ->with(['detalles.producto.historialPreciosCompra'])
+            ->get();
 
-        // Consulta base de las ventas con detalles y productos
-        $ventas = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
-            ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', $filtros['fecha']);
-            })
-            ->when(!empty($filtros['fecha_desde']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', '>=', $filtros['fecha_desde']);
-            })
-            ->when(!empty($filtros['fecha_hasta']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', '<=', $filtros['fecha_hasta']);
-            })
-            ->when(!empty($filtros['socio']), function ($query) use ($filtros) {
-                $query->whereHas('socio', function ($q) use ($filtros) {
-                    $q->where('nombre_socio', 'LIKE', '%' . $filtros['socio'] . '%');
-                });
-            })
-            ->when($filtros['credito'] !== 'all', function ($query) use ($filtros) {
-                $query->where('credito', $filtros['credito']);
-            })
-            ->when($filtros['servicio'] !== 'all', function ($query) use ($filtros) {
-                $query->where('servicio', $filtros['servicio']);
-            })
-            ->when($filtros['finalizada'] !== 'all', function ($query) use ($filtros) {
-                $query->where('finalizada', $filtros['finalizada']);
-            })
-            ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc')
+        $totalesGlobales = $this->calcularTotalesDeColeccion($ventasGlobales);
+
+        // Query paginada para la vista
+        $ventas = (clone $queryBase)
+            ->with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->paginate(10);
 
-
-        // Procesar cada venta
+        // Procesar detalles de la página actual
         $ventas->getCollection()->transform(function ($venta) {
             $venta->detalles->transform(function ($detalle) use ($venta) {
-                // Obtener precio de venta y compra según fecha de la venta
-                $precioVenta = $detalle->producto->historialPrecios()
-                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(function ($query) use ($venta) {
-                        $query->whereNull('fecha_fin')
-                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
-                    })
-                    ->orderBy('fecha_inicio', 'desc')
-                    ->value('precio_venta') ?? 0;
-
                 $precioCompra = $detalle->producto->historialPreciosCompra()
                     ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(function ($query) use ($venta) {
-                        $query->whereNull('fecha_fin')
+                    ->where(function ($q) use ($venta) {
+                        $q->whereNull('fecha_fin')
                             ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
                     })
                     ->orderBy('fecha_inicio', 'desc')
                     ->value('precio_compra') ?? 0;
 
-                // Calcular valores
-                //$detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
-                $detalle->subtotal_costo = $detalle->cantidad_venta * $precioCompra;
+                $detalle->subtotal_costo    = $detalle->cantidad_venta * $precioCompra;
                 $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
 
-                // Ajustar efectivo y crédito según el campo "credito" de la venta
                 if ($venta->credito) {
                     $detalle->efectivo = 0;
-                    $detalle->credito = $detalle->subtotal_venta;
+                    $detalle->monto_credito = $detalle->subtotal_venta;
                 } else {
-                    $detalle->efectivo = $detalle->subtotal_venta;
-                    $detalle->credito = 0;
+                    $detalle->efectivo      = $detalle->subtotal_venta;
+                    $detalle->monto_credito = 0;
                 }
 
                 return $detalle;
             });
-
             return $venta;
         });
 
-        return view('pages.venta_reporte_utilidad', compact('ventas', 'filtros', 'totalesGlobales'));
+        // ✅ Nombres legibles para los filtros mostrados en la vista
+        $filtrosLegibles = $this->filtrosATexto($filtros);
+
+        return view(
+            'pages.venta_reporte_utilidad',
+            compact('ventas', 'filtros', 'filtrosLegibles', 'totalesGlobales')
+        );
     }
 
-    private function calcularTotalesGlobales(array $filtros)
+    // ✅ Query base compartida entre index, reporte y PDF — sin duplicar lógica
+    private function buildVentasQuery(array $filtros)
+    {
+        return Venta::query()
+            ->when(
+                !empty($filtros['fecha']),
+                fn($q) =>
+                $q->whereDate('fecha_venta', $filtros['fecha'])
+            )
+            ->when(
+                empty($filtros['fecha']) && !empty($filtros['fecha_desde']),
+                fn($q) =>
+                $q->where('fecha_venta', '>=', $filtros['fecha_desde'] . ' 00:00:00')
+            )
+            ->when(
+                empty($filtros['fecha']) && !empty($filtros['fecha_hasta']),
+                fn($q) =>
+                $q->where('fecha_venta', '<=', $filtros['fecha_hasta'] . ' 23:59:59')
+            )
+            ->when(
+                !empty($filtros['socio']),
+                fn($q) =>
+                $q->whereHas(
+                    'socio',
+                    fn($q2) =>
+                    $q2->where('nombre_socio', 'LIKE', '%' . $filtros['socio'] . '%')
+                )
+            )
+            ->when(
+                $filtros['credito'] !== 'all',
+                fn($q) =>
+                $q->where('credito', $filtros['credito'])
+            )
+            ->when(
+                $filtros['servicio'] !== 'all',
+                fn($q) =>
+                $q->where('servicio', $filtros['servicio'])
+            )
+            ->when(
+                $filtros['finalizada'] !== 'all',
+                fn($q) =>
+                $q->where('finalizada', $filtros['finalizada'])
+            )
+            ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc');
+    }
+
+    // DESPUÉS — usa la colección ya cargada en memoria, cero queries adicionales
+    private function calcularTotalesDeColeccion($ventas): array
     {
         $totales = [
             'totalEfectivo' => 0,
-            'totalCredito' => 0,
-            'totalVentas' => 0,
-            'totalCosto' => 0,
+            'totalCredito'  => 0,
+            'totalVentas'   => 0,
+            'totalCosto'    => 0,
             'totalUtilidad' => 0,
         ];
 
-        $ventasGlobales = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
-            ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', $filtros['fecha']);
-            })
-            ->when(!empty($filtros['fecha_desde']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', '>=', $filtros['fecha_desde']);
-            })
-            ->when(!empty($filtros['fecha_hasta']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', '<=', $filtros['fecha_hasta']);
-            })
-            ->when(!empty($filtros['socio']), function ($query) use ($filtros) {
-                $query->whereHas('socio', function ($q) use ($filtros) {
-                    $q->where('nombre_socio', 'LIKE', '%' . $filtros['socio'] . '%');
-                });
-            })
-            ->when($filtros['credito'] !== 'all', function ($query) use ($filtros) {
-                $query->where('credito', $filtros['credito']);
-            })
-            ->when($filtros['servicio'] !== 'all', function ($query) use ($filtros) {
-                $query->where('servicio', $filtros['servicio']);
-            })
-            ->when($filtros['finalizada'] !== 'all', function ($query) use ($filtros) {
-                $query->where('finalizada', $filtros['finalizada']);
-            })
-            ->get();
-
-        foreach ($ventasGlobales as $venta) {
+        foreach ($ventas as $venta) {
             foreach ($venta->detalles as $detalle) {
-                $precioCompra = $detalle->producto->historialPreciosCompra()
-                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(function ($query) use ($venta) {
-                        $query->whereNull('fecha_fin')
-                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+                // ✅ Filtra en memoria sobre la relación ya eager-loaded
+                // DESPUÉS — first() es el equivalente correcto en Collections
+                $precioCompra = $detalle->producto->historialPreciosCompra
+                    ->filter(function ($h) use ($venta) {
+                        return $h->fecha_inicio <= $venta->fecha_venta
+                            && (is_null($h->fecha_fin) || $h->fecha_fin >= $venta->fecha_venta);
                     })
-                    ->orderBy('fecha_inicio', 'desc')
-                    ->value('precio_compra') ?? 0;
+                    ->sortByDesc('fecha_inicio')
+                    ->first()?->precio_compra ?? 0; // ✅ first() en Collection + nullsafe operator
 
-                $subtotalCosto = $detalle->cantidad_venta * $precioCompra;
-                $subtotalUtilidad = $detalle->subtotal_venta - $subtotalCosto;
+                $costo    = $detalle->cantidad_venta * $precioCompra;
+                $utilidad = $detalle->subtotal_venta - $costo;
+
+                $totales['totalVentas']   += $detalle->subtotal_venta;
+                $totales['totalCosto']    += $costo;
+                $totales['totalUtilidad'] += $utilidad;
 
                 if ($venta->credito) {
                     $totales['totalCredito'] += $detalle->subtotal_venta;
                 } else {
                     $totales['totalEfectivo'] += $detalle->subtotal_venta;
                 }
-
-                $totales['totalVentas'] += $detalle->subtotal_venta;
-                $totales['totalCosto'] += $subtotalCosto;
-                $totales['totalUtilidad'] += $subtotalUtilidad;
             }
         }
 
         return $totales;
     }
 
+    private function filtrosATexto(array $filtros): \Illuminate\Support\Collection
+    {
+        $legibles = [];
+
+        if (!empty($filtros['fecha'])) {
+            $legibles['Fecha específica'] = $filtros['fecha'];
+        }
+        if (!empty($filtros['fecha_desde'])) {
+            $legibles['Fecha desde'] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $legibles['Fecha hasta'] = $filtros['fecha_hasta'];
+        }
+        if (!empty($filtros['socio'])) {
+            $legibles['Socio'] = $filtros['socio'];
+        }
+        if ($filtros['credito'] !== 'all') {
+            $legibles['Crédito'] = $filtros['credito'] == 1 ? 'Sí' : 'No';
+        }
+        if ($filtros['servicio'] !== 'all') {
+            $legibles['Servicio'] = $filtros['servicio'] == 1 ? 'Sí' : 'No';
+        }
+        if ($filtros['finalizada'] !== 'all') {
+            $legibles['Finalizada'] = $filtros['finalizada'] == 1 ? 'Sí' : 'No';
+        }
+        $legibles['Orden'] = $filtros['orden'] === 'asc' ? 'Más antigua' : 'Más reciente';
+
+        return collect($legibles); // ✅ Collection para chunk() en la vista PDF
+    }
+
     public function descargarReportePdf(Request $request)
     {
-        // Obtener filtros aplicados y establecer valores predeterminados
-        $filtros = $request->all();
-        $filtros['credito'] = $filtros['credito'] ?? 'all';
-        $filtros['servicio'] = $filtros['servicio'] ?? 'all';
-        $filtros['finalizada'] = $filtros['finalizada'] ?? 'all';
-        $filtros['orden'] = $filtros['orden'] ?? 'desc';
+        $filtros = [
+            'fecha'       => $request->get('fecha'),
+            'fecha_desde' => $request->get('fecha_desde'),
+            'fecha_hasta' => $request->get('fecha_hasta'),
+            'socio'       => $request->get('socio'),
+            'credito'     => $request->get('credito', 'all'),
+            'servicio'    => $request->get('servicio', 'all'),
+            'finalizada'  => $request->get('finalizada', 'all'),
+            'orden'       => $request->get('orden', 'desc'),
+        ];
 
-        // Traducción de valores para filtros booleanos
-        if ($filtros['credito'] !== 'all') {
-            $filtros['credito'] = $filtros['credito'] == 1 ? 'Sí' : 'No';
-        } else {
-            $filtros['credito'] = 'Todas';
-        }
-
-        if ($filtros['servicio'] !== 'all') {
-            $filtros['servicio'] = $filtros['servicio'] == 1 ? 'Sí' : 'No';
-        } else {
-            $filtros['servicio'] = 'Todas';
-        }
-
-        if ($filtros['finalizada'] !== 'all') {
-            $filtros['finalizada'] = $filtros['finalizada'] == 1 ? 'Sí' : 'No';
-        } else {
-            $filtros['finalizada'] = 'Todas';
-        }
-
-        if ($filtros['orden'] === 'asc') {
-            $filtros['orden'] = 'Más antigua';
-        } else {
-            $filtros['orden'] = 'Más reciente';
-        }
-
-        $totalEfectivo = 0;
-        $totalCredito = 0;
-        $totalVentas = 0;
-        $totalCosto = 0;
-        $totalUtilidad = 0;
-
-        // Consulta base de las ventas con detalles y productos
-        $ventas = Venta::with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
-            ->when(!empty($filtros['fecha']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', $filtros['fecha']);
-            })
-            ->when(!empty($filtros['fecha_desde']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', '>=', $filtros['fecha_desde']);
-            })
-            ->when(!empty($filtros['fecha_hasta']), function ($query) use ($filtros) {
-                $query->whereDate('fecha_venta', '<=', $filtros['fecha_hasta']);
-            })
-            ->when(!empty($filtros['socio']), function ($query) use ($filtros) {
-                $query->whereHas('socio', function ($q) use ($filtros) {
-                    $q->where('nombre_socio', 'LIKE', '%' . $filtros['socio'] . '%');
-                });
-            })
-            ->when($filtros['credito'] !== 'Todas', function ($query) use ($filtros) {
-                $query->where('credito', $filtros['credito'] === 'Sí' ? 1 : 0);
-            })
-            ->when($filtros['servicio'] !== 'Todas', function ($query) use ($filtros) {
-                $query->where('servicio', $filtros['servicio'] === 'Sí' ? 1 : 0);
-            })
-            ->when($filtros['finalizada'] !== 'Todas', function ($query) use ($filtros) {
-                $query->where('finalizada', $filtros['finalizada'] === 'Sí' ? 1 : 0);
-            })
-            ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc')
+        // Todos los registros sin paginar
+        $ventas = $this->buildVentasQuery($filtros)
+            ->with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->get();
+
+        // Procesar detalles y acumular totales en una sola pasada
+        $totalEfectivo = 0;
+        $totalCredito  = 0;
+        $totalVentas   = 0;
+        $totalCosto    = 0;
+        $totalUtilidad = 0;
 
         $ventas->transform(function ($venta) use (&$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
             $venta->detalles->transform(function ($detalle) use ($venta, &$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
-                // Obtener precio de venta y compra según fecha de la venta
-                $precioVenta = $detalle->producto->historialPrecios()
-                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(function ($query) use ($venta) {
-                        $query->whereNull('fecha_fin')
-                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
-                    })
-                    ->orderBy('fecha_inicio', 'desc')
-                    ->value('precio_venta') ?? 0;
-
                 $precioCompra = $detalle->producto->historialPreciosCompra()
                     ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(function ($query) use ($venta) {
-                        $query->whereNull('fecha_fin')
-                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
-                    })
+                    ->where(
+                        fn($q) =>
+                        $q->whereNull('fecha_fin')
+                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta)
+                    )
                     ->orderBy('fecha_inicio', 'desc')
                     ->value('precio_compra') ?? 0;
 
-                // Calcular valores
-                //$detalle->subtotal_venta = $detalle->cantidad_venta * $precioVenta;
-                $detalle->subtotal_costo = $detalle->cantidad_venta * $precioCompra;
+                $detalle->subtotal_costo    = $detalle->cantidad_venta * $precioCompra;
                 $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
 
                 if ($venta->credito) {
-                    $detalle->efectivo = 0;
-                    $detalle->credito = $detalle->subtotal_venta;
-                    $totalCredito += $detalle->subtotal_venta;
+                    $detalle->efectivo      = 0;
+                    $detalle->monto_credito = $detalle->subtotal_venta;
+                    $totalCredito          += $detalle->subtotal_venta;
                 } else {
-                    $detalle->efectivo = $detalle->subtotal_venta;
-                    $detalle->credito = 0;
-                    $totalEfectivo += $detalle->subtotal_venta;
+                    $detalle->efectivo      = $detalle->subtotal_venta;
+                    $detalle->monto_credito = 0;
+                    $totalEfectivo         += $detalle->subtotal_venta;
                 }
 
-                $totalVentas += $detalle->subtotal_venta;
-                $totalCosto += $detalle->subtotal_costo;
+                $totalVentas   += $detalle->subtotal_venta;
+                $totalCosto    += $detalle->subtotal_costo;
                 $totalUtilidad += $detalle->subtotal_utilidad;
 
                 return $detalle;
             });
-
             return $venta;
         });
 
-        // Generar PDF
-        $pdf = Pdf::loadView('pdf.venta_reporte_utilidad_pdf', compact('ventas', 'filtros', 'totalEfectivo', 'totalCredito', 'totalVentas', 'totalCosto', 'totalUtilidad'));
+        // ✅ Texto legible para el PDF — no corrompe los valores numéricos usados en filtros
+        $filtrosLegibles = $this->filtrosATexto($filtros);
+
+        $pdf = Pdf::loadView(
+            'pdf.venta_reporte_utilidad_pdf',
+            compact(
+                'ventas',
+                'filtrosLegibles',
+                'totalEfectivo',
+                'totalCredito',
+                'totalVentas',
+                'totalCosto',
+                'totalUtilidad'
+            )
+        );
 
         return $pdf->download('reporte_utilidad.pdf');
     }
@@ -734,11 +735,23 @@ class VentaController extends Controller
         abort_if(Gate::denies('venta_dashboard'), 403);
 
         $fechaInicio = $request->input('fecha_inicio', now()->subMonth()->toDateString());
-        $fechaFin = $request->input('fecha_fin', now()->toDateString());
+        $fechaFin    = $request->input('fecha_fin',    now()->toDateString());
 
-        // Ventas por fecha
+        // ✅ Validar que fecha_inicio <= fecha_fin
+        if (Carbon::parse($fechaInicio)->gt(Carbon::parse($fechaFin))) {
+            return redirect()->back()->with(
+                'error',
+                'La fecha de inicio debe ser menor o igual a la fecha de fin.'
+            );
+        }
+
+        // ✅ Incluir todo el día final con endOfDay
+        $fechaFinCompleta = Carbon::parse($fechaFin)->endOfDay();
+
+        // ── Ventas por fecha ─────────────────────────────────────────────────
         $ventasPorFecha = Venta::selectRaw('DATE(fecha_venta) as fecha, SUM(total_venta) as total')
-            ->whereBetween('fecha_venta', [$fechaInicio, $fechaFin])
+            ->where('fecha_venta', '>=', $fechaInicio)
+            ->where('fecha_venta', '<=', $fechaFinCompleta)
             ->groupBy('fecha')
             ->orderBy('fecha')
             ->get();
@@ -746,31 +759,43 @@ class VentaController extends Controller
         $ventasLabels = $ventasPorFecha->pluck('fecha')->toArray();
         $ventasValues = $ventasPorFecha->pluck('total')->toArray();
 
-        // Productos más vendidos
-        $productosMasVendidos = DetalleVenta::selectRaw('producto.nombre_producto, SUM(detalle_venta.cantidad_venta) as cantidad')
+        // ── Productos más vendidos ───────────────────────────────────────────
+        // ✅ Filtrar por fecha_venta de la venta, no por created_at del detalle
+        $productosMasVendidos = DetalleVenta::selectRaw('
+            producto.id_producto,
+            producto.nombre_producto,
+            SUM(detalle_venta.cantidad_venta) as cantidad
+        ')
+            ->join('venta', 'detalle_venta.id_venta', '=', 'venta.id_venta')
             ->join('producto', 'detalle_venta.id_producto', '=', 'producto.id_producto')
-            ->whereBetween('detalle_venta.created_at', [$fechaInicio, $fechaFin])
-            ->groupBy('producto.nombre_producto')
+            ->where('venta.fecha_venta', '>=', $fechaInicio)
+            ->where('venta.fecha_venta', '<=', $fechaFinCompleta)
+            ->groupBy('producto.id_producto', 'producto.nombre_producto')
             ->orderByDesc('cantidad')
-            ->limit(5)
+            ->limit(5) // ✅ Top 5 productos — configurable si se desea
             ->get();
 
         $productosLabels = $productosMasVendidos->pluck('nombre_producto')->toArray();
         $productosValues = $productosMasVendidos->pluck('cantidad')->toArray();
 
-        // Ventas vs Compras (Ingresos vs Egresos)
-        $ventasTotales = Venta::whereBetween('fecha_venta', [$fechaInicio, $fechaFin])->sum('total_venta');
-        $comprasTotales = Compra::whereBetween('fecha_compra', [$fechaInicio, $fechaFin])->sum('total_compra');
+        // ── Ventas vs Compras (Ingresos vs Egresos) ──────────────────────────
+        $ventasTotales  = Venta::where('fecha_venta', '>=', $fechaInicio)
+            ->where('fecha_venta', '<=', $fechaFinCompleta)
+            ->sum('total_venta');
+
+        $comprasTotales = Compra::where('fecha_compra', '>=', $fechaInicio)
+            ->where('fecha_compra', '<=', $fechaFinCompleta)
+            ->sum('total_compra');
 
         return view('pages.ventas_dashboard', [
-            'ventasLabels' => $ventasLabels,
-            'ventasValues' => $ventasValues,
+            'ventasLabels'    => $ventasLabels,
+            'ventasValues'    => $ventasValues,
             'productosLabels' => $productosLabels,
             'productosValues' => $productosValues,
-            'ventasTotales' => $ventasTotales,
-            'comprasTotales' => $comprasTotales,
-            'fechaInicio' => $fechaInicio,
-            'fechaFin' => $fechaFin,
+            'ventasTotales'   => $ventasTotales,
+            'comprasTotales'  => $comprasTotales,
+            'fechaInicio'     => $fechaInicio,
+            'fechaFin'        => $fechaFin,
         ]);
     }
 }
