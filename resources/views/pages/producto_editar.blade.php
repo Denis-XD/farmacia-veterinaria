@@ -103,7 +103,7 @@
                 <div class="col-md-6">
                     <label for="stock" class="form-label">Stock</label>
                     <input type="number" name="stock" id="stock" class="form-control" required min="0"
-                        value="{{ $producto->stock }}">
+                        value="{{ $producto->stock }}" readonly>
                 </div>
                 <div class="col-md-6">
                     <label for="stock_minimo" class="form-label">Stock Mínimo</label>

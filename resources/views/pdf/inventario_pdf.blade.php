@@ -18,6 +18,22 @@
             margin-top: 20px;
         }
 
+        /* ✅ Tabla para organizar las fechas en fila */
+        .details table {
+            width: 100%;
+            border: none;
+            margin-bottom: 10px;
+        }
+
+        .details table td {
+            border: none;
+            padding: 5px;
+        }
+
+        .details h4 {
+            margin: 5px 0;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -35,25 +51,37 @@
             padding: 5px;
             text-align: left;
         }
-
-        .totals {
-            margin-top: 20px;
-        }
-
-        .totals table {
-            width: auto;
-            margin: 0 auto;
-        }
     </style>
 </head>
 
 <body>
     <h2>Inventario de Productos</h2>
     <div class="details">
-        <h4>Fecha Inicio: {{ $fechaInicio }}</h4>
-        <h4>Fecha Fin: {{ $fechaFin }}</h4>
-        <h4>Total valor: Bs {{ number_format($totalValor, 2) }}</h4>
+        {{-- ✅ Primera fila: Fecha Inicio y Fecha Fin --}}
+        <table>
+            <tr>
+                <td style="width: 50%;">
+                    <h4>Fecha Inicio: {{ $fechaInicio }}</h4>
+                </td>
+                <td style="width: 50%;">
+                    <h4>Fecha Fin: {{ $fechaFin }}</h4>
+                </td>
+            </tr>
+        </table>
+
+        {{-- ✅ Segunda fila: Incluye productos sin stock y Total valor --}}
+        <table>
+            <tr>
+                <td style="width: 50%;">
+                    <h4>Incluye productos sin stock: {{ $incluirSinStock ? 'Sí' : 'No' }}</h4>
+                </td>
+                <td style="width: 50%;">
+                    <h4>Total valor: Bs {{ number_format($totalValor, 2) }}</h4>
+                </td>
+            </tr>
+        </table>
     </div>
+
     <table>
         <thead>
             <tr>

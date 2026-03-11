@@ -112,6 +112,7 @@
                         <tr>
                             <th>Nombre</th>
                             <th>Precio Unitario</th>
+                            <th>Costo</th>
                             <th>Cantidad</th>
                             <th>Subtotal</th>
                             <th>Acciones</th>
@@ -444,31 +445,31 @@
                 tbody.innerHTML = '';
                 productosSeleccionados.forEach((producto, index) => {
                     tbody.innerHTML += `
-                <tr>
-                    <td>${producto.nombre_producto}</td>
-                    <td>Bs ${parseFloat(producto.precio_venta_actual).toFixed(2)}</td>
-                    <td>
-                        <input type="number" class="form-control cantidad"
-                            value="${producto.cantidad}"
-                            min="0.01" max="${producto.stock}"
-                            step="0.01"
-                            data-index="${index}" onfocus="this.select()">
-                    </td>
-                    <td>
-                        <input type="number" class="form-control subtotal"
-                            value="${parseFloat(producto.subtotal).toFixed(2)}"
-                            min="0" step="0.01"
-                            data-index="${index}">
-                    </td>
-                    <td>
-                        <button class="btn btn-danger btn-sm btn-quitar-producto"
-                            data-index="${index}">Quitar</button>
-                    </td>
-                </tr>`;
+                        <tr>
+                            <td>${producto.nombre_producto}</td>
+                            <td>Bs ${parseFloat(producto.precio_venta_actual).toFixed(2)}</td>
+                            <td class="text-danger">Bs ${parseFloat(producto.precio_compra_actual).toFixed(2)}</td>
+                            <td>
+                                <input type="number" class="form-control cantidad"
+                                    value="${producto.cantidad}"
+                                    min="0.01" max="${producto.stock}"
+                                    step="0.01"
+                                    data-index="${index}" onfocus="this.select()">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control subtotal"
+                                    value="${parseFloat(producto.subtotal).toFixed(2)}"
+                                    min="0" step="0.01"
+                                    data-index="${index}">
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-sm btn-quitar-producto"
+                                    data-index="${index}">Quitar</button>
+                            </td>
+                        </tr>`;
                 });
                 actualizarTotal();
             }
-
             // ─── Eventos de inputs ───────────────────────────────────────────────────
             document.addEventListener('input', event => {
                 if (event.target.classList.contains('cantidad')) {

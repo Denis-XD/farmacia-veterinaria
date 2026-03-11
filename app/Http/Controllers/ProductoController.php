@@ -355,14 +355,23 @@ class ProductoController extends Controller
                 $saldo -= $movimiento->stock;
             }
 
-            // Etiqueta legible para la columna "Tipo"
-            $tipoLabel = match ($movimiento->tipo_transaccion) {
-                'Compra'          => 'Compra',
-                'Venta'           => 'Venta',
-                'Ajuste Positivo' => 'Ajuste Positivo',
-                'Ajuste Negativo' => 'Ajuste Negativo',
-                default           => $movimiento->tipo_transaccion,
-            };
+            switch ($movimiento->tipo_transaccion) {
+                case 'Compra':
+                    $tipoLabel = 'Compra';
+                    break;
+                case 'Venta':
+                    $tipoLabel = 'Venta';
+                    break;
+                case 'Ajuste Positivo':
+                    $tipoLabel = 'Ajuste Positivo';
+                    break;
+                case 'Ajuste Negativo':
+                    $tipoLabel = 'Ajuste Negativo';
+                    break;
+                default:
+                    $tipoLabel = $movimiento->tipo_transaccion;
+                    break;
+            }
 
             return [
                 'fecha'   => $movimiento->fecha->toDateTimeString(),
@@ -403,6 +412,7 @@ class ProductoController extends Controller
 
         $fechaInicio = $request->input('fecha_inicio', Carbon::now()->subMonth()->toDateString());
         $fechaFin    = $request->input('fecha_fin',    Carbon::now()->toDateString());
+        $incluirSinStock = $request->input('incluir_sin_stock', 0);
 
         if (Carbon::parse($fechaInicio)->gt(Carbon::parse($fechaFin))) {
             return redirect()->back()->with(
@@ -429,35 +439,51 @@ class ProductoController extends Controller
                 return $saldo;
             });
 
-        // Página actual — eager load para evitar N+1 en obtenerPrecioProducto
-        $productosPaginados = Producto::with(['historialPrecios', 'historialPreciosCompra'])
-            ->paginate(10);
+        // ✅ CAMBIO 1: Traer TODOS los productos, no paginar todavía
+        $todosLosProductos = Producto::with(['historialPrecios', 'historialPreciosCompra'])
+            ->get();
 
-        // Inyectar datos calculados directamente en cada objeto producto
-        foreach ($productosPaginados->items() as $producto) {
+        // ✅ CAMBIO 2: Procesar y filtrar ANTES de paginar
+        $productosProcesados = collect();
+
+        foreach ($todosLosProductos as $producto) {
             $stock  = $stockPorProducto->get($producto->id_producto, 0);
+
+            // Filtrar productos con stock = 0 si no se marcó incluir sin stock
+            if (!$incluirSinStock && $stock <= 0) {
+                continue;
+            }
+
             $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
 
             $producto->stock_kardex  = $stock;
             $producto->precio_kardex = $precio;
             $producto->valor_kardex  = $stock * $precio;
+
+            $productosProcesados->push($producto);
         }
 
-        $totalValorPagina = collect($productosPaginados->items())->sum('valor_kardex');
+        // ✅ CAMBIO 3: Paginar DESPUÉS de filtrar usando una Collection manual
+        $perPage = 10;
+        $currentPage = request()->get('page', 1);
+        $productosPaginados = new \Illuminate\Pagination\LengthAwarePaginator(
+            $productosProcesados->forPage($currentPage, $perPage),
+            $productosProcesados->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
 
-        // Total global — todos los productos con sus precios, reutiliza $stockPorProducto
-        $totalValorGlobal = Producto::with(['historialPreciosCompra'])
-            ->get()
-            ->sum(function ($producto) use ($fechaInicio, $fechaFin, $stockPorProducto) {
-                $stock  = $stockPorProducto->get($producto->id_producto, 0);
-                $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
-                return $stock * $precio;
-            });
+        $totalValorPagina = $productosPaginados->sum('valor_kardex');
+
+        // Total global — reutiliza $productosProcesados que ya está filtrado
+        $totalValorGlobal = $productosProcesados->sum('valor_kardex');
 
         return view('pages.productos_inventario', [
-            'productos'        => $productosPaginados,
+            'productos'        => $productosPaginados, // Ahora es LengthAwarePaginator de productos filtrados
             'fechaInicio'      => $fechaInicio,
             'fechaFin'         => $fechaFin,
+            'incluirSinStock'  => $incluirSinStock,
             'totalValor'       => $totalValorPagina,
             'totalValorGlobal' => $totalValorGlobal,
         ]);
@@ -520,8 +546,8 @@ class ProductoController extends Controller
     {
         $fechaInicio = $request->input('fechaInicio', Carbon::now()->subMonth()->toDateString());
         $fechaFin    = $request->input('fechaFin',    Carbon::now()->toDateString());
+        $incluirSinStock = $request->input('incluir_sin_stock', 0); // ✅ Nuevo filtro
 
-        // ✅ Una sola query para todos los movimientos hasta fechaFin
         $fechaFinCarbon = Carbon::parse($fechaFin)->endOfDay();
 
         $stockPorProducto = HistorialInventario::where('fecha', '<=', $fechaFinCarbon)
@@ -539,27 +565,32 @@ class ProductoController extends Controller
                 return $saldo;
             });
 
-        // ✅ Eager load para evitar N+1 en obtenerPrecioProducto
         $productos = Producto::with(['historialPreciosCompra'])->get();
 
-        $inventario = $productos->map(function ($producto) use ($fechaInicio, $fechaFin, $stockPorProducto) {
-            $stock  = $stockPorProducto->get($producto->id_producto, 0);
-            $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
+        $inventario = $productos
+            ->map(function ($producto) use ($fechaInicio, $fechaFin, $stockPorProducto) {
+                $stock  = $stockPorProducto->get($producto->id_producto, 0);
+                $precio = $this->obtenerPrecioProducto($producto, $fechaInicio, $fechaFin);
 
-            return [
-                'descripcion'     => $producto->nombre_producto,
-                'unidad'          => $producto->unidad,
-                'cantidad'        => $stock,
-                'precio_unitario' => $precio,
-                'valor'           => $stock * $precio,
-            ];
-        });
+                return [
+                    'descripcion'     => $producto->nombre_producto,
+                    'unidad'          => $producto->unidad,
+                    'cantidad'        => $stock,
+                    'precio_unitario' => $precio,
+                    'valor'           => $stock * $precio,
+                ];
+            })
+            // ✅ Filtrar productos con stock = 0 si no se marcó el checkbox
+            ->filter(function ($item) use ($incluirSinStock) {
+                return $incluirSinStock || $item['cantidad'] > 0;
+            })
+            ->values(); // Reindexar después del filtro
 
         $totalValor = $inventario->sum('valor');
 
         $pdf = PDF::loadView(
             'pdf.inventario_pdf',
-            compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor')
+            compact('inventario', 'fechaInicio', 'fechaFin', 'totalValor', 'incluirSinStock')
         );
 
         return $pdf->download('inventario_' . $fechaInicio . '_al_' . $fechaFin . '.pdf');

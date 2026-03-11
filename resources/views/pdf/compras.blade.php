@@ -62,6 +62,14 @@
             font-weight: bold;
             margin-top: 3px;
         }
+
+        .total-box {
+            border: 2px solid #000;
+            padding: 5px;
+            display: inline-block;
+            margin-top: 5px;
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 
@@ -104,7 +112,10 @@
     <div class="totals">
         <p>Total Productos: Bs {{ number_format($sumaSubtotales, 2) }}</p>
         <p>Descuento: {{ $compra->descuento_compra }}%</p>
-        <p>Total: Bs {{ number_format($compra->total_compra, 2) }}</p>
+        <div class="total-box">
+            <strong>Total: Bs {{ number_format($compra->total_compra, 2) }}</strong>
+        </div>
+
     </div>
 </body>
 

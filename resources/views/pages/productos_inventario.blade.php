@@ -44,22 +44,35 @@
         <form method="GET" action="{{ route('productos.inventario') }}" class="row g-2 mb-3 align-items-end">
             <div class="col-12 col-md-auto">
                 <label for="fecha_inicio" class="form-label">Fecha Inicio:</label>
-                <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ $fechaInicio }}"
-                    class="form-control">
+                <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ $fechaInicio }}" class="form-control"
+                    required>
             </div>
             <div class="col-12 col-md-auto">
                 <label for="fecha_fin" class="form-label">Fecha Fin:</label>
-                <input type="date" name="fecha_fin" id="fecha_fin" value="{{ $fechaFin }}" class="form-control">
+                <input type="date" name="fecha_fin" id="fecha_fin" value="{{ $fechaFin }}" class="form-control"
+                    required>
             </div>
-            <div class="col-12 col-md-auto">
+            <div class="col-6 col-md-auto">
+                <label for="incluir_sin_stock" class="form-label">Incluir sin stock:</label>
+                <select name="incluir_sin_stock" id="incluir_sin_stock" class="form-select">
+                    <option value="0" {{ $incluirSinStock == 0 ? 'selected' : '' }}>No</option>
+                    <option value="1" {{ $incluirSinStock == 1 ? 'selected' : '' }}>Sí</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-auto">
+                <label class="form-label d-none d-md-block">&nbsp;</label>
                 <button type="submit" class="btn btn-primary w-100">Buscar</button>
             </div>
         </form>
 
-        <div class="d-flex flex-column flex-md-row align-items-md-center align-items-start mb-3">
+        <div class="d-flex flex-column flex-md-row align-items-md-center align-items-start mb-3 gap-2">
             <h5 class="mb-2 mb-md-0">Total valor Global: Bs {{ number_format($totalValorGlobal, 2) }}</h5>
             <h5 class="mb-2 mb-md-0 ms-md-3">Total valor Actual: Bs {{ number_format($totalValor, 2) }}</h5>
-            <a href="{{ route('productos.descargarInventarioPdf', ['fechaInicio' => $fechaInicio, 'fechaFin' => $fechaFin]) }}"
+            <a href="{{ route('productos.descargarInventarioPdf', [
+                'fechaInicio' => $fechaInicio,
+                'fechaFin' => $fechaFin,
+                'incluir_sin_stock' => $incluirSinStock,
+            ]) }}"
                 class="btn btn-danger ms-auto">
                 Descargar en PDF
             </a>
@@ -78,7 +91,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {{-- DESPUÉS --}}
                     @forelse ($productos as $producto)
                         <tr>
                             <td>{{ ($productos->currentPage() - 1) * $productos->perPage() + $loop->iteration }}</td>
@@ -97,9 +109,10 @@
             </table>
         </div>
     </div>
+
+    {{-- ✅ Paginación se mantiene igual usando $productos --}}
     <nav aria-label="Page navigation example">
         <ul class="pagination justify-content-center mt-4">
-            <!-- Enlace "Anterior" -->
             @if ($productos->previousPageUrl())
                 <li class="page-item">
                     <a class="page-link"
@@ -112,11 +125,10 @@
                 </li>
             @endif
 
-            <!-- Enlaces de páginas -->
             @php
                 $totalPages = $productos->lastPage();
                 $currentPage = $productos->currentPage();
-                $range = 1; // Número de páginas visibles a izquierda y derecha de la actual
+                $range = 1;
                 $start = max(1, $currentPage - $range);
                 $end = min($totalPages, $currentPage + $range);
             @endphp
@@ -152,7 +164,6 @@
                 </li>
             @endif
 
-            <!-- Enlace "Siguiente" -->
             @if ($productos->nextPageUrl())
                 <li class="page-item">
                     <a class="page-link"

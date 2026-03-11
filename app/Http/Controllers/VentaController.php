@@ -483,41 +483,50 @@ class VentaController extends Controller
             'orden'       => $request->get('orden', 'desc'),
         ];
 
-        // ✅ Query base reutilizable
         $queryBase = $this->buildVentasQuery($filtros);
 
-        // ✅ Totales globales sin paginar — clonar antes de paginar
         $ventasGlobales = (clone $queryBase)
             ->with(['detalles.producto.historialPreciosCompra'])
             ->get();
 
         $totalesGlobales = $this->calcularTotalesDeColeccion($ventasGlobales);
 
-        // Query paginada para la vista
         $ventas = (clone $queryBase)
             ->with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->paginate(10);
 
-        // Procesar detalles de la página actual
         $ventas->getCollection()->transform(function ($venta) {
-            $venta->detalles->transform(function ($detalle) use ($venta) {
-                $precioCompra = $detalle->producto->historialPreciosCompra()
-                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(function ($q) use ($venta) {
-                        $q->whereNull('fecha_fin')
-                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta);
+            $sumaSubtotales = $venta->detalles->sum('subtotal_venta');
+
+            $factorDescuento = $sumaSubtotales > 0
+                ? $venta->total_venta / $sumaSubtotales
+                : 1;
+
+            $venta->detalles->transform(function ($detalle) use ($venta, $factorDescuento) {
+                // ✅ PHP 7.4 compatible - Reemplazar ?-> con comprobación tradicional
+                $historialFiltrado = $detalle->producto->historialPreciosCompra
+                    ->filter(function ($h) use ($venta) {
+                        return $h->fecha_inicio <= $venta->fecha_venta
+                            && (is_null($h->fecha_fin) || $h->fecha_fin >= $venta->fecha_venta);
                     })
-                    ->orderBy('fecha_inicio', 'desc')
-                    ->value('precio_compra') ?? 0;
+                    ->sortByDesc('fecha_inicio')
+                    ->first();
+
+                $precioCompra = $historialFiltrado ? $historialFiltrado->precio_compra : 0;
+
+                $subtotalConDescuento = $detalle->subtotal_venta * $factorDescuento;
+
+                $detalle->subtotal_venta_original = $detalle->subtotal_venta;
+                $detalle->subtotal_venta = $subtotalConDescuento;
 
                 $detalle->subtotal_costo    = $detalle->cantidad_venta * $precioCompra;
-                $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
+                $detalle->subtotal_utilidad = $subtotalConDescuento - $detalle->subtotal_costo;
 
                 if ($venta->credito) {
-                    $detalle->efectivo = 0;
-                    $detalle->monto_credito = $detalle->subtotal_venta;
+                    $detalle->efectivo      = 0;
+                    $detalle->monto_credito = $subtotalConDescuento;
                 } else {
-                    $detalle->efectivo      = $detalle->subtotal_venta;
+                    $detalle->efectivo      = $subtotalConDescuento;
                     $detalle->monto_credito = 0;
                 }
 
@@ -526,7 +535,6 @@ class VentaController extends Controller
             return $venta;
         });
 
-        // ✅ Nombres legibles para los filtros mostrados en la vista
         $filtrosLegibles = $this->filtrosATexto($filtros);
 
         return view(
@@ -581,7 +589,6 @@ class VentaController extends Controller
             ->orderBy('fecha_venta', $filtros['orden'] === 'asc' ? 'asc' : 'desc');
     }
 
-    // DESPUÉS — usa la colección ya cargada en memoria, cero queries adicionales
     private function calcularTotalesDeColeccion($ventas): array
     {
         $totales = [
@@ -590,31 +597,41 @@ class VentaController extends Controller
             'totalVentas'   => 0,
             'totalCosto'    => 0,
             'totalUtilidad' => 0,
+            'totalUtilidadEfectivo' => 0, // ✅ Nuevo campo
         ];
 
         foreach ($ventas as $venta) {
+            $sumaSubtotales = $venta->detalles->sum('subtotal_venta');
+            $factorDescuento = $sumaSubtotales > 0
+                ? $venta->total_venta / $sumaSubtotales
+                : 1;
+
             foreach ($venta->detalles as $detalle) {
-                // ✅ Filtra en memoria sobre la relación ya eager-loaded
-                // DESPUÉS — first() es el equivalente correcto en Collections
-                $precioCompra = $detalle->producto->historialPreciosCompra
+                $historialFiltrado = $detalle->producto->historialPreciosCompra
                     ->filter(function ($h) use ($venta) {
                         return $h->fecha_inicio <= $venta->fecha_venta
                             && (is_null($h->fecha_fin) || $h->fecha_fin >= $venta->fecha_venta);
                     })
                     ->sortByDesc('fecha_inicio')
-                    ->first()?->precio_compra ?? 0; // ✅ first() en Collection + nullsafe operator
+                    ->first();
+
+                $precioCompra = $historialFiltrado ? $historialFiltrado->precio_compra : 0;
+
+                $subtotalConDescuento = $detalle->subtotal_venta * $factorDescuento;
 
                 $costo    = $detalle->cantidad_venta * $precioCompra;
-                $utilidad = $detalle->subtotal_venta - $costo;
+                $utilidad = $subtotalConDescuento - $costo;
 
-                $totales['totalVentas']   += $detalle->subtotal_venta;
+                $totales['totalVentas']   += $subtotalConDescuento;
                 $totales['totalCosto']    += $costo;
                 $totales['totalUtilidad'] += $utilidad;
 
                 if ($venta->credito) {
-                    $totales['totalCredito'] += $detalle->subtotal_venta;
+                    $totales['totalCredito'] += $subtotalConDescuento;
                 } else {
-                    $totales['totalEfectivo'] += $detalle->subtotal_venta;
+                    $totales['totalEfectivo'] += $subtotalConDescuento;
+                    // ✅ Sumar utilidad solo si es venta en efectivo
+                    $totales['totalUtilidadEfectivo'] += $utilidad;
                 }
             }
         }
@@ -622,7 +639,7 @@ class VentaController extends Controller
         return $totales;
     }
 
-    private function filtrosATexto(array $filtros): \Illuminate\Support\Collection
+    private function filtrosATexto(array $filtros)
     {
         $legibles = [];
 
@@ -649,7 +666,7 @@ class VentaController extends Controller
         }
         $legibles['Orden'] = $filtros['orden'] === 'asc' ? 'Más antigua' : 'Más reciente';
 
-        return collect($legibles); // ✅ Collection para chunk() en la vista PDF
+        return collect($legibles);
     }
 
     public function descargarReportePdf(Request $request)
@@ -665,44 +682,53 @@ class VentaController extends Controller
             'orden'       => $request->get('orden', 'desc'),
         ];
 
-        // Todos los registros sin paginar
         $ventas = $this->buildVentasQuery($filtros)
             ->with(['detalles.producto.historialPrecios', 'detalles.producto.historialPreciosCompra'])
             ->get();
 
-        // Procesar detalles y acumular totales en una sola pasada
         $totalEfectivo = 0;
         $totalCredito  = 0;
         $totalVentas   = 0;
         $totalCosto    = 0;
         $totalUtilidad = 0;
+        $totalUtilidadEfectivo = 0; // ✅ Nuevo acumulador
 
-        $ventas->transform(function ($venta) use (&$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
-            $venta->detalles->transform(function ($detalle) use ($venta, &$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad) {
-                $precioCompra = $detalle->producto->historialPreciosCompra()
-                    ->where('fecha_inicio', '<=', $venta->fecha_venta)
-                    ->where(
-                        fn($q) =>
-                        $q->whereNull('fecha_fin')
-                            ->orWhere('fecha_fin', '>=', $venta->fecha_venta)
-                    )
-                    ->orderBy('fecha_inicio', 'desc')
-                    ->value('precio_compra') ?? 0;
+        $ventas->transform(function ($venta) use (&$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad, &$totalUtilidadEfectivo) {
+            $sumaSubtotales = $venta->detalles->sum('subtotal_venta');
+            $factorDescuento = $sumaSubtotales > 0
+                ? $venta->total_venta / $sumaSubtotales
+                : 1;
 
+            $venta->detalles->transform(function ($detalle) use ($venta, $factorDescuento, &$totalEfectivo, &$totalCredito, &$totalVentas, &$totalCosto, &$totalUtilidad, &$totalUtilidadEfectivo) {
+                $historialFiltrado = $detalle->producto->historialPreciosCompra
+                    ->filter(function ($h) use ($venta) {
+                        return $h->fecha_inicio <= $venta->fecha_venta
+                            && (is_null($h->fecha_fin) || $h->fecha_fin >= $venta->fecha_venta);
+                    })
+                    ->sortByDesc('fecha_inicio')
+                    ->first();
+
+                $precioCompra = $historialFiltrado ? $historialFiltrado->precio_compra : 0;
+
+                $subtotalConDescuento = $detalle->subtotal_venta * $factorDescuento;
+
+                $detalle->subtotal_venta = $subtotalConDescuento;
                 $detalle->subtotal_costo    = $detalle->cantidad_venta * $precioCompra;
-                $detalle->subtotal_utilidad = $detalle->subtotal_venta - $detalle->subtotal_costo;
+                $detalle->subtotal_utilidad = $subtotalConDescuento - $detalle->subtotal_costo;
 
                 if ($venta->credito) {
                     $detalle->efectivo      = 0;
-                    $detalle->monto_credito = $detalle->subtotal_venta;
-                    $totalCredito          += $detalle->subtotal_venta;
+                    $detalle->monto_credito = $subtotalConDescuento;
+                    $totalCredito          += $subtotalConDescuento;
                 } else {
-                    $detalle->efectivo      = $detalle->subtotal_venta;
+                    $detalle->efectivo      = $subtotalConDescuento;
                     $detalle->monto_credito = 0;
-                    $totalEfectivo         += $detalle->subtotal_venta;
+                    $totalEfectivo         += $subtotalConDescuento;
+                    // ✅ Sumar utilidad solo si es efectivo
+                    $totalUtilidadEfectivo += $detalle->subtotal_utilidad;
                 }
 
-                $totalVentas   += $detalle->subtotal_venta;
+                $totalVentas   += $subtotalConDescuento;
                 $totalCosto    += $detalle->subtotal_costo;
                 $totalUtilidad += $detalle->subtotal_utilidad;
 
@@ -711,7 +737,6 @@ class VentaController extends Controller
             return $venta;
         });
 
-        // ✅ Texto legible para el PDF — no corrompe los valores numéricos usados en filtros
         $filtrosLegibles = $this->filtrosATexto($filtros);
 
         $pdf = Pdf::loadView(
@@ -723,7 +748,8 @@ class VentaController extends Controller
                 'totalCredito',
                 'totalVentas',
                 'totalCosto',
-                'totalUtilidad'
+                'totalUtilidad',
+                'totalUtilidadEfectivo'
             )
         );
 

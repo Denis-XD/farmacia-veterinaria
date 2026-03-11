@@ -62,6 +62,14 @@
             font-weight: bold;
             margin-top: 3px;
         }
+
+        .total-box {
+            border: 2px solid #000;
+            padding: 5px;
+            display: inline-block;
+            margin-top: 5px;
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 
@@ -76,7 +84,8 @@
         <p><strong>Atendido por:</strong> {{ $venta->usuario->nombre }}</p>
         <p><strong>Socio:</strong> {{ $venta->socio->nombre_socio ?? 'Sin Socio' }}</p>
         <p><strong>Fecha:</strong> {{ $venta->fecha_venta->format('d/m/Y') }}</p>
-        <p><strong>Total: Bs</strong> {{ number_format($venta->total_venta, 2) }}</p>
+        <p><strong>Credito:</strong> {{ $venta->credito ? 'Si' : 'No' }}</p>
+        <p><strong>Observación:</strong> {{ $venta->descripcion ?? '' }}</p>
     </div>
 
     <h2>Productos</h2>
@@ -105,6 +114,15 @@
 
     <div class="totals">
         <p>Total Productos: Bs {{ number_format($sumaSubtotales, 2) }}</p>
+        {{-- ✅ Siempre mostrar "Descuento:" incluso si es 0% --}}
+        @php
+            $montoDescuento = $sumaSubtotales - $venta->total_venta;
+            $porcentajeDescuento = $venta->descuento_venta ?? 0;
+        @endphp
+        <p>Descuento ({{ number_format($porcentajeDescuento, 2) }}%): Bs {{ number_format($montoDescuento, 2) }}</p>
+        <div class="total-box">
+            <strong>Total: Bs {{ number_format($venta->total_venta, 2) }}</strong>
+        </div>
     </div>
 
     <h2>Pagos</h2>

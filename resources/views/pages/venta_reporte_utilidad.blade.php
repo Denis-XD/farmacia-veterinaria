@@ -29,6 +29,7 @@
             @endif
         </div>
         <!-- Totales -->
+        <!-- Totales -->
         <div class="row mb-3">
             <!-- Columna 1 -->
             <div class="col-md-6 mb-3">
@@ -46,6 +47,9 @@
                         {{ number_format($totalesGlobales['totalCredito'], 2) }}</span></h5>
                 <h5>Total en Efectivo: <span class="text-info">Bs
                         {{ number_format($totalesGlobales['totalEfectivo'], 2) }}</span></h5>
+                {{-- ✅ Nuevo: Utilidad Bruta solo en Efectivo --}}
+                <h5>Total Utilidad Bruta Efectivo: <span style="color: #0d6efd;">Bs
+                        {{ number_format($totalesGlobales['totalUtilidadEfectivo'], 2) }}</span></h5>
             </div>
         </div>
         <div class="d-flex justify-content-end mb-3">
@@ -79,7 +83,7 @@
                                 <td>{{ $detalle->producto->unidad }}</td>
                                 <td>{{ $detalle->producto->nombre_producto }}</td>
                                 <td>Bs {{ number_format($detalle->efectivo, 2) }}</td>
-                                <td>Bs {{ number_format($detalle->credito, 2) }}</td>
+                                <td>Bs {{ number_format($detalle->monto_credito, 2) }}</td>
                                 <td>Bs {{ number_format($detalle->subtotal_venta, 2) }}</td>
                                 <td>Bs {{ number_format($detalle->subtotal_costo, 2) }}</td>
                                 <td>Bs {{ number_format($detalle->subtotal_utilidad, 2) }}</td>

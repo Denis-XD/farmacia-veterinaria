@@ -82,6 +82,8 @@
     <div class="totales">
         <p>Total Efectivo: <strong>Bs {{ number_format($totalEfectivo, 2) }}</strong></p>
         <p>Total Crédito: <strong>Bs {{ number_format($totalCredito, 2) }}</strong></p>
+        {{-- ✅ Nuevo: Utilidad Bruta Efectivo debajo de Total Efectivo --}}
+        <p>Total Utilidad Bruta Efectivo: <strong>Bs {{ number_format($totalUtilidadEfectivo, 2) }}</strong></p>
         <p>Total Ventas: <strong>Bs {{ number_format($totalVentas, 2) }}</strong></p>
         <p>Total Costo de Ventas: <strong>Bs {{ number_format($totalCosto, 2) }}</strong></p>
         <p>Total Utilidad Bruta: <strong>Bs {{ number_format($totalUtilidad, 2) }}</strong></p>
@@ -131,4 +133,5 @@
     </table>
 
 </body>
+
 </html>
